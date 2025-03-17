@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF作成ツールリプレイス - フェーズ1詳細ロードマップ</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --bg-color: #f5f7fa;
+            --text-color: #333;
+            --border-color: #ddd;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --info-color: #3498db;
+            --light-bg: #ecf0f1;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            padding: 0;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            margin: 1.5rem 0 1rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--secondary-color);
+            color: var(--primary-color);
+        }
+        
+        h3 {
+            font-size: 1.5rem;
+            margin: 1.2rem 0 0.8rem 0;
+            color: var(--primary-color);
+        }
+        
+        p {
+            margin-bottom: 1rem;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 30px;
+            overflow: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border: 1px solid var(--border-color);
+        }
+        
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:nth-child(even) {
+            background-color: var(--light-bg);
+        }
+        
+        ul, ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+        
+        li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .nav-container {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            position: sticky;
+            top: 20px;
+        }
+        
+        .nav-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+        
+        .nav-links {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .nav-links li {
+            margin-bottom: 8px;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: var(--secondary-color);
+            font-weight: 500;
+            display: block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        
+        .nav-links a:hover {
+            background-color: var(--light-bg);
+        }
+        
+        .risk-high {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+        
+        .risk-medium {
+            color: var(--warning-color);
+        }
+        
+        .risk-low {
+            color: var(--info-color);
+        }
+        
+        .milestone {
+            background-color: #d5f5e3;
+            font-weight: bold;
+        }
+        
+        .layout {
+            display: flex;
+            gap: 30px;
+        }
+        
+        .sidebar {
+            width: 280px;
+            flex-shrink: 0;
+        }
+        
+        .main-content {
+            flex-grow: 1;
+        }
+        
+        @media (max-width: 992px) {
+            .layout {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+            }
+            
+            .nav-container {
+                position: static;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            h2 {
+                font-size: 1.5rem;
+            }
+            
+            h3 {
+                font-size: 1.3rem;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+        }
+        
+        .summary-box {
+            background-color: #eaf2f8;
+            border-left: 5px solid var(--secondary-color);
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 30px;
+            background-color: var(--primary-color);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>PDF作成ツールリプレイス</h1>
+            <p>フェーズ1詳細ロードマップ</p>
+        </div>
+    </header>
+    
+    <div class="container layout">
+        <aside class="sidebar">
+            <div class="nav-container">
+                <div class="nav-title">目次</div>
+                <ul class="nav-links">
+                    <li><a href="#overview">概要</a></li>
+                    <li><a href="#current-analysis">1. 現状分析</a></li>
+                    <li><a href="#operation-analysis">2. 運用分析</a></li>
+                    <li><a href="#business-flow">3. 業務フロー作成</a></li>
+                    <li><a href="#data-flow">4. データフロー作成</a></li>
+                    <li><a href="#requirements">5. 要求定義</a></li>
+                    <li><a href="#phase2-planning">6. フェーズ2計画立案</a></li>
+                    <li><a href="#risks">リスクと対策</a></li>
+                    <li><a href="#organization">体制</a></li>
+                    <li><a href="#deliverables">成果物一覧</a></li>
+                    <li><a href="#milestones">マイルストーン</a></li>
+                    <li><a href="#transition">次フェーズへの移行条件</a></li>
+                </ul>
+            </div>
+        </aside>
+        
+        <main class="main-content">
+            <section id="overview" class="card">
+                <h2>概要</h2>
+                <div class="summary-box">
+                    <p>フェーズ1では、現状の把握と分析を通じて要求を明確化し、フェーズ2以降の作業範囲と見積りを確定させることを目的とする。</p>
+                </div>
+                
+                <table>
+                    <tbody>
+                        <tr>
+                            <th>項目</th>
+                            <th>内容</th>
+                        </tr>
+                        <tr>
+                            <td>期間</td>
+                            <td>6週間</td>
+                        </tr>
+                        <tr>
+                            <td>目標</td>
+                            <td>現行システムの課題抽出、業務フローの明確化、要求定義の完了</td>
+                        </tr>
+                        <tr>
+                            <td>主要成果物</td>
+                            <td>現状分析レポート、業務フロー図、データフロー図、要求定義書、フェーズ2以降の見積書</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <section id="current-analysis" class="card">
+                <h2>1. 現状分析（1-2週目）</h2>
+                
+                <h3>目的</h3>
+                <p>現行のPDF作成ツールの機能や課題、利用状況を詳細に把握する</p>
+                
+                <h3>実施内容</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>タスク</th>
+                            <th>詳細</th>
+                            <th>担当</th>
+                            <th>工数</th>
+                            <th>成果物</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1.1 現行システム調査</td>
+                            <td>システムの機能一覧、設定項目、使用技術の洗い出し</td>
+                            <td>システム担当</td>
+                            <td>3人日</td>
+                            <td>機能一覧表</td>
+                        </tr>
+                        <tr>
+                            <td>1.2 システム構成調査</td>
+                            <td>インフラ構成、他システムとの連携状況の確認</td>
+                            <td>インフラ担当</td>
+                            <td>2人日</td>
+                            <td>システム構成図</td>
+                        </tr>
+                        <tr>
+                            <td>1.3 課題点収集</td>
+                            <td>現行システムの問題点・改善要望の収集（ユーザーインタビュー）</td>
+                            <td>PM/BA</td>
+                            <td>5人日</td>
+                            <td>課題一覧</td>
+                        </tr>
+                        <tr>
+                            <td>1.4 利用状況分析</td>
+                            <td>ログ分析、使用頻度の高い機能の特定</td>
+                            <td>分析担当</td>
+                            <td>3人日</td>
+                            <td>利用統計レポート</td>
+                        </tr>
+                        <tr>
+                            <td>1.5 現状分析レポート作成</td>
+                            <td>上記調査結果をまとめたレポートの作成</td>
+                            <td>PM</td>
+                            <td>2人日</td>
+                            <td>現状分析レポート</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <p><strong>チェックポイント</strong>: 現状分析レビュー会議（2週目末）</p>
+            </section>
+            
+            <section id="operation-analysis" class="card">
+                <h2>2. 運用分析（2-3週目）</h2>
+                
+                <h3>目的</h3>
+                <p>現行システムの運用方法や保守体制を把握し、新システムへの要件として反映する</p>
+                
+                <h3>実施内容</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>タスク</th>
+                            <th>詳細</th>
+                            <th>担当</th>
+                            <th>工数</th>
+                            <th>成果物</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>2.1 運用体制調査</td>
+                            <td>運用担当者の役割、対応範囲、運用マニュアルの収集</td>
+                            <td>運用担当</td>
+                            <td>2人日</td>
+                            <td>運用体制図</td>
+                        </tr>
+                        <tr>
+                            <td>2.2 保守履歴分析</td>
+                            <td>過去の障害対応・改修履歴の調査</td>
+                            <td>システム担当</td>
+                            <td>2人日</td>
+                            <td>保守履歴リスト</td>
+                        </tr>
+                        <tr>
+                            <td>2.3 運用コスト分析</td>
+                            <td>現行システムの運用・保守コストの調査</td>
+                            <td>PM</td>
+                            <td>2人日</td>
+                            <td>コスト分析シート</td>
+                        </tr>
+                        <tr>
+                            <td>2.4 運用上の課題抽出</td>
+                            <td>運用担当者へのインタビューによる課題抽出</td>
+                            <td>PM/BA</td>
+                            <td>3人日</td>
+                            <td>運用課題リスト</td>
+                        </tr>
+                        <tr>
+                            <td>2.5 運用分析レポート作成</td>
+                            <td>上記調査結果をまとめたレポートの作成</td>
+                            <td>PM</td>
+                            <td>2人日</td>
+                            <td>運用分析レポート</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <p><strong>チェックポイント</strong>: 運用分析レビュー会議（3週目末）</p>
+            </section>
+            
+            <section id="business-flow" class="card">
+                <h2>3. 業務フロー作成（3-4週目）</h2>
+                
+                <h3>目的</h3>
+                <p>PDFツールを利用する業務プロセスを明確化し、新システムが対応すべき業務範囲を定義する</p>
+                
+                <h3>実施内容</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>タスク</th>
+                            <th>詳細</th>
+                            <th>担当</th>
+                            <th>工数</th>
+                            <th>成果物</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>3.1 業務プロセス調査</td>
+                            <td>関連部署へのインタビューによる業務プロセスの把握</td>
+                            <td>BA</td>
+                            <td>4人日</td>
+                            <td>インタビュー記録</td>
+                        </tr>
+                        <tr>
+                            <td>3.2 主要業務フロー図作成</td>
+                            <td>PDFツール利用に関連する主要業務のフロー図作成</td>
+                            <td>BA</td>
+                            <td>5人日</td>
+                            <td>業務フロー図（主要）</td>
+                        </tr>
+                        <tr>
+                            <td>3.3 例外フロー図作成</td>
+                            <td>異常系・例外処理のフロー図作成</td>
+                            <td>BA</td>
+                            <td>3人日</td>
+                            <td>業務フロー図（例外）</td>
+                        </tr>
+                        <tr>
+                            <td>3.4 部門間連携フロー図作成</td>
+                            <td>部門をまたがる業務連携のフロー図作成</td>
+                            <td>BA</td>
+                            <td>3人日</td>
+                            <td>部門間連携図</td>
+                        </tr>
+                        <tr>
+                            <td>3.5 業務効率化ポイント抽出</td>
+                            <td>業務フローから効率化可能なポイントの洗い出し</td>
+                            <td>PM/BA</td>
+                            <td>2人日</td>
+                            <td>改善ポイントリスト</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <p><strong>チェックポイント</strong>: 業務フローレビュー会議（4週目末）</p>
+            </section>
+            
+            <section id="data-flow" class="card">
+                <h2>4. データフロー作成（4-5週目）</h2>
+                
+                <h3>目的</h3>
+                <p>システム内外でのデータの流れを可視化し、必要なインターフェースを明確にする</p>
+                
+                <h3>実施内容</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>タスク</th>
+                            <th>詳細</th>
+                            <th>担当</th>
+                            <th>工数</th>
+                            <th>成果物</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>4.1 データ項目調査</td>
+                            <td>PDFに利用される各種データ項目の洗い出し</td>
+                            <td>BA/DB担当</td>
+                            <td>3人日</td>
+                            <td>データ項目一覧</td>
+                        </tr>
+                        <tr>
+                            <td>4.2 データソース調査</td>
+                            <td>データの取得元システム・DBの調査</td>
+                            <td>システム担当</td>
+                            <td>3人日</td>
+                            <td>データソースマップ</td>
+                        </tr>
+                        <tr>
+                            <td>4.3 データフロー図作成（内部）</td>
+                            <td>システム内部でのデータの流れを図示</td>
+                            <td>BA/DB担当</td>
+                            <td>3人日</td>
+                            <td>内部データフロー図</td>
+                        </tr>
+                        <tr>
+                            <td>4.4 データフロー図作成（外部連携）</td>
+                            <td>外部システムとの連携におけるデータフローを図示</td>
+                            <td>BA/システム担当</td>
+                            <td>3人日</td>
+                            <td>外部連携データフロー図</td>
+                        </tr>
+                        <tr>
+                            <td>4.5 データ変換要件定義</td>
+                            <td>データ形式や変換ルールの定義</td>
+                            <td>BA/DB担当</td>
+                            <td>2人日</td>
+                            <td>データ変換要件書</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <p><strong>チェックポイント</strong>: データフローレビュー会議（5週目中）</p>
+            </section>
+            
+            <section id="requirements" class="card">
+                <h2>5. 要求定義（5-6週目）</h2>
+                
+                <h3>目的</h3>
+                <p>これまでの分析結果を基に、新システムへの要求を明確化する</p>
+                
+                <h3>実施内容</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>タスク</th>
+                            <th>詳細</th>
+                            <th>担当</th>
+                            <th>工数</th>
+                            <th>成果物</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>5.1 機能要求整理</td>
+                            <td>必要な機能の洗い出しと優先度付け</td>
+                            <td>PM/BA</td>
+                            <td>4人日</td>
+                            <td>機能要求リスト</td>
+                        </tr>
+                        <tr>
+                            <td>5.2 非機能要求整理</td>
+                            <td>性能・セキュリティ等の非機能要件の定義</td>
+                            <td>アーキテクト</td>
+                            <td>3人日</td>
+                            <td>非機能要求リスト</td>
+                        </tr>
+                        <tr>
+                            <td>5.3 UI/UX要求整理</td>
+                            <td>ユーザーインターフェースに関する要求整理</td>
+                            <td>UI担当</td>
+                            <td>3人日</td>
+                            <td>UI要求書</td>
+                        </tr>
+                        <tr>
+                            <td>5.4 要求優先度付け</td>
+                            <td>要求の重要度/優先度の決定</td>
+                            <td>PM/ステークホルダー</td>
+                            <td>2人日</td>
+                            <td>優先度付き要求リスト</td>
+                        </tr>
+                        <tr>
+                            <td>5.5 要求定義書作成</td>
+                            <td>上記要求をまとめた定義書の作成</td>
+                            <td>PM/BA</td>
+                            <td>3人日</td>
+                            <td>要求定義書</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <p><strong>チェックポイント</strong>: 要求定義レビュー会議（6週目前半）</p>
+            </section>
+            
+            <section id="phase2-planning" class="card">
+                <h2>6. フェーズ2計画立案（6週目）</h2>
+                
+                <h3>目的</h3>
+                <p>フェーズ1の成果に基づいて、フェーズ2以降の計画と見積りを確定する</p>
+                
+                <h3>実施内容</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>タスク</th>
+                            <th>詳細</th>
+                            <th>担当</th>
+                            <th>工数</th>
+                            <th>成果物</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>6.1 システム要件精査</td>
+                            <td>要求定義に基づくシステム要件の整理</td>
+                            <td>アーキテクト</td>
+                            <td>2人日</td>
+                            <td>システム要件一覧</td>
+                        </tr>
+                        <tr>
+                            <td>6.2 開発規模見積り</td>
+                            <td>機能要件に基づく開発規模の見積り</td>
+                            <td>PM/開発リーダー</td>
+                            <td>3人日</td>
+                            <td>開発規模見積書</td>
+                        </tr>
+                        <tr>
+                            <td>6.3 リソース計画</td>
+                            <td>必要な人員・スキルの検討</td>
+                            <td>PM</td>
+                            <td>1人日</td>
+                            <td>リソース計画書</td>
+                        </tr>
+                        <tr>
+                            <td>6.4 コスト見積り</td>
+                            <td>開発・導入・運用コストの見積り</td>
+                            <td>PM</td>
+                            <td>2人日</td>
+                            <td>コスト見積書</td>
+                        </tr>
+                        <tr>
+                            <td>6.5 フェーズ2計画書作成</td>
+                            <td>スケジュール、体制、成果物等の計画策定</td>
+                            <td>PM</td>
+                            <td>2人日</td>
+                            <td>フェーズ2計画書</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <p><strong>チェックポイント</strong>: フェーズ1完了報告会（6週目末）</p>
+            </section>
+            
+            <section id="risks" class="card">
+                <h2>リスクと対策</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>リスク</th>
+                            <th>影響度</th>
+                            <th>対策</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>ステークホルダーの時間確保が困難</td>
+                            <td class="risk-high">高</td>
+                            <td>事前に面談スケジュールを調整、必要に応じてアンケート形式も活用</td>
+                        </tr>
+                        <tr>
+                            <td>現行システムのドキュメント不足</td>
+                            <td class="risk-medium">中</td>
+                            <td>開発・運用担当者へのヒアリングを重点的に実施</td>
+                        </tr>
+                        <tr>
+                            <td>部門間で要求の相違・矛盾が発生</td>
+                            <td class="risk-high">高</td>
+                            <td>定期的な情報共有会議を設け、早期に調整</td>
+                        </tr>
+                        <tr>
+                            <td>業務プロセスが複雑で分析に時間がかかる</td>
+                            <td class="risk-medium">中</td>
+                            <td>主要業務に焦点を当て、優先度付けを行う</td>
+                        </tr>
+                        <tr>
+                            <td>要求が膨らみすぎてスコープクリープのリスク</td>
+                            <td class="risk-high">高</td>
+                            <td>要求の優先度付けを明確にし、フェーズ2以降に先送り可能な項目を識別</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <section id="organization" class="card">
+                <h2>体制</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>役割</th>
+                            <th>人数</th>
+                            <th>主な責任</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>プロジェクトマネージャー(PM)</td>
+                            <td>1名</td>
+                            <td>全体統括、進捗管理、ステークホルダー調整</td>
+                        </tr>
+                        <tr>
+                            <td>ビジネスアナリスト(BA)</td>
+                            <td>2名</td>
+                            <td>業務分析、要求定義、フロー図作成</td>
+                        </tr>
+                        <tr>
+                            <td>システム担当</td>
+                            <td>1名</td>
+                            <td>現行システム調査、技術要件検討</td>
+                        </tr>
+                        <tr>
+                            <td>DB担当</td>
+                            <td>1名</td>
+                            <td>データ構造分析、データフロー設計</td>
+                        </tr>
+                        <tr>
+                            <td>UI担当</td>
+                            <td>1名</td>
+                            <td>UI/UX要件整理、画面設計方針検討</td>
+                        </tr>
+                        <tr>
+                            <td>インフラ担当</td>
+                            <td>1名</td>
+                            <td>システム構成調査、インフラ要件検討</td>
+                        </tr>
+                        <tr>
+                            <td>アーキテクト</td>
+                            <td>1名</td>
+                            <td>非機能要件定義、技術方式検討</td>
+                        </tr>
+                        <tr>
+                            <td>開発リーダー</td>
+                            <td>1名</td>
+                            <td>開発規模見積り、開発計画立案</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <section id="deliverables" class="card">
+                <h2>成果物一覧</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>成果物</th>
+                            <th>説明</th>
+                            <th>完了予定</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>現状分析レポート</td>
+                            <td>現行システムの機能・課題・利用状況をまとめた報告書</td>
+                            <td>2週目末</td>
+                        </tr>
+                        <tr>
+                            <td>運用分析レポート</td>
+                            <td>運用体制・コスト・課題をまとめた報告書</td>
+                            <td>3週目末</td>
+                        </tr>
+                        <tr>
+                            <td>業務フロー図</td>
+                            <td>PDF作成に関連する業務プロセスを可視化した図</td>
+                            <td>4週目末</td>
+                        </tr>
+                        <tr>
+                            <td>データフロー図</td>
+                            <td>システム内外のデータの流れを可視化した図</td>
+                            <td>5週目中</td>
+                        </tr>
+                        <tr>
+                            <td>要求定義書</td>
+                            <td>機能・非機能要求をまとめた文書</td>
+                            <td>6週目前半</td>
+                        </tr>
+                        <tr>
+                            <td>フェーズ2計画書</td>
+                            <td>要件定義、設計、開発のスケジュール・体制・コスト</td>
+                            <td>6週目末</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <section id="milestones" class="card">
+                <h2>マイルストーン</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>マイルストーン</th>
+                            <th>予定日</th>
+                            <th>概要</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="milestone">
+                            <td>キックオフ</td>
+                            <td>1週目初日</td>
+                            <td>プロジェクト開始、方針共有</td>
+                        </tr>
+                        <tr class="milestone">
+                            <td>現状分析レビュー</td>
+                            <td>2週目末</td>
+                            <td>現行システムの分析結果確認</td>
+                        </tr>
+                        <tr class="milestone">
+                            <td>運用分析レビュー</td>
+                            <td>3週目末</td>
+                            <td>運用体制・課題の確認</td>
+                        </tr>
+                        <tr class="milestone">
+                            <td>業務フローレビュー</td>
+                            <td>4週目末</td>
+                            <td>業務プロセスの確認・合意</td>
+                        </tr>
+                        <tr class="milestone">
+                            <td>データフローレビュー</td>
+                            <td>5週目中</td>
+                            <td>データフローの確認・合意</td>
+                        </tr>
+                        <tr class="milestone">
+                            <td>要求定義レビュー</td>
+                            <td>6週目前半</td>
+                            <td>要求事項の確認・承認</td>
+                        </tr>
+                        <tr class="milestone">
+                            <td>フェーズ1完了報告</td>
+                            <td>6週目末</td>
+                            <td>フェーズ1成果報告、フェーズ2計画承認</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <section id="transition" class="card">
+                <h2>次フェーズへの移行条件</h2>
+                <ol>
+                    <li>要求定義書がステークホルダーに承認されていること</li>
+                    <li>フェーズ2の計画・見積りが承認されていること</li>
+                    <li>主要課題・リスクへの対応策が明確になっていること</li>
+                    <li>必要なリソースが確保できる見込みがあること</li>
+                </ol>
+            </section>
+        </main>
+    </div>
+    
+    <footer>
+        <p>&copy; 2025 PDF作成ツールリプレイスプロジェクト</p>
+    </footer>
+</body>
+</html>
