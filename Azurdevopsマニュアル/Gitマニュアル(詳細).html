@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Git&#x521d;&#x5fc3;&#x8005;&#x5411;&#x3051;&#x904b;&#x7528;&#x30de;&#x30cb;&#x30e5;&#x30a2;&#x30eb;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+/* From extension marp-team.marp-vscode */
+#__marp-vscode {
+  all: revert;
+}
+
+/* Override VS Code default CSS rules reverting to initial
+   https://github.com/microsoft/vscode/blob/master/src/vs/workbench/contrib/webview/browser/pre/main.js#L53 */
+body.marp-vscode {
+  padding: 0;
+}
+
+body.marp-vscode img {
+  max-width: unset;
+  max-height: unset;
+}
+
+body.marp-vscode a,
+body.marp-vscode a:hover,
+body.marp-vscode code {
+  color: unset;
+}
+
+body.marp-vscode blockquote {
+  background: unset;
+  border-color: unset;
+}
+
+@media screen {
+  body.marp-vscode {
+    overflow-y: scroll;
+
+    /* stylelint-disable-next-line selector-class-pattern */
+    &.showEditorSelection {
+      --marp-vscode-highlight-color: rgb(255 255 255 / 40%);
+
+      &.vscode-light {
+        --marp-vscode-highlight-color: rgb(0 0 0 / 15%);
+      }
+
+      &.vscode-high-contrast {
+        --marp-vscode-highlight-color: rgb(255 160 0 / 70%);
+      }
+    }
+  }
+
+  #__marp-vscode [data-marp-vscode-slide-wrapper] {
+    margin: 20px;
+    position: relative;
+
+    &.code-active-line,
+    &:has(.code-active-line) {
+      &::before {
+        position: absolute;
+        content: '';
+        inset: -7px;
+        border: 3px solid var(--marp-vscode-highlight-color, transparent);
+        pointer-events: none;
+      }
+    }
+  }
+
+  #__marp-vscode svg[data-marpit-svg] {
+    box-shadow: 0 5px 10px rgb(0 0 0 / 25%);
+    display: block;
+    margin: 0;
+  }
+
+  /* Based on https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+  #code-csp-warning {
+    background-color: #444;
+    box-shadow: 1px 1px 1px rgb(0 0 0 / 25%);
+    color: white;
+    cursor: pointer;
+    font-family: sans-serif;
+    font-size: 12px;
+    line-height: 22px;
+    margin: 16px;
+    padding: 6px;
+    position: fixed;
+    right: 0;
+    text-align: center;
+    top: 0;
+    word-wrap: break-word;
+  }
+
+  #code-csp-warning:hover {
+    text-decoration: none;
+    background-color: #007acc;
+    box-shadow: 2px 2px 2px rgb(0 0 0 / 25%);
+  }
+}
+
+@media print {
+  body.marp-vscode #code-csp-warning {
+    display: none;
+  }
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <p>承知しました！これから、Visual Studio 2022を使ったAzure DevOps Server上でのGit運用に関する、初心者向けマニュアルをMarkdown形式で作成します。</p>
+<ul>
+<li>TortusSVNとの比較を交えて「フェッチ」「プル」「プッシュ」をわかりやすく解説</li>
+<li>基本ブランチ運用（main, develop, bugfix）ルールの説明</li>
+<li>手元にクローンがある場合・ない場合のケーススタディ</li>
+<li>バグ修正、リリース作業時などの追加ケーススタディも盛り込みます</li>
+</ul>
+<p>しばらくお待ちください！</p>
+<h1 id="git初心者向け運用マニュアル">Git初心者向け運用マニュアル</h1>
+<p>本マニュアルは、<strong>TortoiseSVNの日常操作に慣れた初心者向け</strong>に、Gitの基本概念とVisual Studio 2022 (Windows 11) 上でのGit運用手順をまとめたものです。Azure DevOps Server 2020上のGitリポジトリを対象に、<strong>Gitコマンドを使わずGUI操作</strong>で行う方法を解説します。SVNとの違いや、初心者が不安になりやすいポイントについても補足しています。</p>
+<h2 id="1-gitとsvnの基本概念の比較">1. GitとSVNの基本概念の比較</h2>
+<ul>
+<li>
+<p><strong>集中型 vs 分散型:</strong> SVN（Apache Subversion）は中央サーバー上のリポジトリでバージョン管理を行う<strong>集中型</strong>システムです (<a href="https://ja.wikipedia.org/wiki/Apache_Subversion#:~:text=Apache%20Subversion%EF%BC%88%E3%82%A2%E3%83%91%E3%83%83%E3%83%81%E3%83%BB%E3%82%B5%E3%83%96%E3%83%90%E3%83%BC%E3%82%B8%E3%83%A7%E3%83%B3%3B%20SVN%EF%BC%89%E3%81%AF%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AE%E3%82%BD%E3%83%BC%E3%82%B9%E3%82%B3%E3%83%BC%E3%83%89%E3%81%AA%E3%81%A9%E3%82%92%E7%AE%A1%E7%90%86%E3%81%99%E3%82%8B%E9%9B%86%E4%B8%AD%E5%9E%8B%E3%83%90%E3%83%BC%E3%82%B8%E3%83%A7%E3%83%B3%E7%AE%A1%E7%90%86%E3%82%B7%E3%82%B9%E3%83%86%E3%83%A0%E3%81%AE%E4%B8%80%E3%81%A4%E3%80%82%20%E5%85%83%E3%80%85%E3%81%AF%E3%80%81CollabNet%E3%81%8C%E9%96%8B%E7%99%BA%E3%81%97%E3%81%A6%E3%81%84%E3%81%9F%E3%81%8C%E3%80%812009%E5%B9%B411%E6%9C%887%E6%97%A5%E3%81%ABApache%20Incubator%E3%83%97%E3%83%AD%E3%82%B8%E3%82%A7%E3%82%AF%E3%83%88%E3%81%AE%E3%81%B2%E3%81%A8%E3%81%A4%E3%81%A8%E3%81%AA%E3%82%8A%E3%80%81,2010%E5%B9%B42%E6%9C%8817%E6%97%A5%E3%82%88%E3%82%8AApache%E3%81%AE%E3%83%88%E3%83%83%E3%83%97%E3%83%97%E3%83%AD%E3%82%B8%E3%82%A7%E3%82%AF%E3%83%88%E3%81%A8%E3%81%AA%E3%81%A3%E3%81%9F%E3%80%82%E3%83%A9%E3%82%A4%E3%82%BB%E3%83%B3%E3%82%B9%E3%81%AFApache%20License%E3%81%AB%E6%BA%96%E3%81%98%E3%81%9F%E3%82%82%E3%81%AE%E3%81%A8%E3%81%AA%E3%81%A3%E3%81%A6%E3%81%84%E3%82%8B%E3%80%82">Apache Subversion - Wikipedia</a>)。これに対し、Gitは各開発者がリポジトリの完全なコピーを手元に保持する<strong>分散型</strong>バージョン管理システムです (<a href="https://ja.wikipedia.org/wiki/Git#:~:text=Git%E3%81%AF%E5%88%86%E6%95%A3%E5%9E%8B%E3%81%AE%E3%82%BD%E3%83%BC%E3%82%B9%E3%82%B3%E3%83%BC%E3%83%89%E7%AE%A1%E7%90%86%E3%82%B7%E3%82%B9%E3%83%86%E3%83%A0%E3%81%A7%E3%81%82%E3%82%8B%E3%81%9F%E3%82%81%E3%80%81%E3%83%AA%E3%83%A2%E3%83%BC%E3%83%88%E3%82%B5%E3%83%BC%E3%83%90%E7%AD%89%E3%81%AB%E3%81%82%E3%82%8B%E4%B8%AD%E5%BF%83%E3%83%AA%E3%83%9D%E3%82%B8%E3%83%88%E3%83%AA%E3%81%AE%E5%AE%8C%E5%85%A8%E3%81%AA%E3%82%B3%E3%83%94%E3%83%BC%E3%82%92%E6%89%8B%E5%85%83%EF%BC%88%E3%83%AD%E3%83%BC%E3%82%AB%E3%83%AB%E7%92%B0%E5%A2%83%EF%BC%89%E3%81%AB%E4%BD%9C%E6%88%90%E3%81%97%E3%81%A6%E3%80%81%E3%81%9D%E3%81%AE%E3%83%AD%E3%83%BC%E3%82%AB%E3%83%AB%E3%83%AA%E3%83%9D%E3%82%B8%E3%83%88%E3%83%AA%E3%82%92%20%E4%BD%BF%E3%81%A3%E3%81%A6%E4%BD%9C%E6%A5%AD%E3%82%92%E8%A1%8C%E3%81%86%E3%80%82">Git - Wikipedia</a>)。つまり<strong>SVN</strong>では常にサーバーと通信して更新・コミットしますが、<strong>Git</strong>ではオフラインでも全履歴を持ったローカルリポジトリで作業できます。</p>
+</li>
+<li>
+<p><strong>リポジトリの取得:</strong> SVNではプロジェクトを利用開始する際に「<strong>チェックアウト</strong>」(Checkout)して作業コピーを取得します。一方、Gitでは「<strong>クローン</strong>」(Clone)を行い、<strong>リモートリポジトリの全履歴を含むコピー</strong>をローカルに作成します。クローン後は、ローカルリポジトリ内で自由に履歴を閲覧したり過去に戻したりできます（SVNのチェックアウトでは最新版+αしか取得しない点が異なります）。</p>
+</li>
+<li>
+<p><strong>コミットの扱い:</strong> SVNでは「<strong>コミット</strong>」すると即座に中央リポジトリに変更が反映され、リビジョン番号が振られます。Gitでは<strong>コミット</strong>はローカルリポジトリへの履歴記録であり、他のメンバーと変更を共有するには後述の「プッシュ」を行う必要があります。SVNのコミット = Gitのローカルコミット+プッシュと考えると分かりやすいです。ローカルでコミットを積み重ね、まとまったところでまとめてプッシュできるため、<strong>細かなコミットを気軽に行える</strong>点がGitの利点です。逆にプッシュしない限り他人には影響しないので、<strong>ローカルで安心して試行錯誤ができます</strong>。</p>
+</li>
+<li>
+<p><strong>ブランチとマージ:</strong> SVNではブランチを作成する際、リポジトリ内にディレクトリをコピーして作るのが一般的です（例: <code>/branches/新ブランチ名</code> を作成）。このため<strong>ブランチの作成・統合(SVNのマージ)<strong>には手間がかかりました。Gitではブランチはリポジトリ内の</strong>ポインタ</strong>のようなものです。ローカルで瞬時に作成・切り替えができ、ブランチ間の<strong>マージ</strong>（統合）も高速かつシンプルです。例えば、実験用にブランチを切って作業し、問題なければメインのブランチにマージするといった運用が<strong>日常的</strong>に行われます。SVNより<strong>ブランチ運用が軽量</strong>なので、積極的に活用できる点がGitの特徴です。</p>
+</li>
+</ul>
+<blockquote>
+<p><strong>ポイント:</strong> GitとSVNの最大の違いは「<strong>中央サーバと常に同期するか</strong>」という部分です。SVNでは更新(Update)しなければ他人の変更を取り込めず、コミットしなければ共有できませんでした。Gitではローカルで自由にコミットでき、後からプッシュで共有・プルで他人の変更を取得します。この違いにより、Gitでは<strong>手元での履歴管理</strong>や<strong>並行作業</strong>が柔軟になります。</p>
+</blockquote>
+<h2 id="2-フェッチプルプッシュの意味と役割">2. 「フェッチ」「プル」「プッシュ」の意味と役割</h2>
+<p>Gitで他者との変更を同期する際に登場する主な操作が「<strong>フェッチ</strong> (Fetch)」「<strong>プル</strong> (Pull)」「<strong>プッシュ</strong> (Push)」です。SVNで言う「更新(Update)」や「コミット(Commit)」に相当する処理ですが、Gitでは役割が分かれているため、それぞれの意味を理解しましょう。</p>
+<ul>
+<li>
+<p><strong>フェッチ (Fetch):</strong> リモートリポジトリ上の、自分のローカルにまだ取り込まれていないコミットを<strong>ダウンロード</strong>します。ただし取得した変更はローカルの作業ブランチには反映されません（履歴として受信するだけで適用はしない） (<a href="https://docs.microsoft.com/en-us/azure/devops/repos/git/gitquickstart?view=azure-devops-2020&amp;tabs=visual-studio#:~:text=,commits%20into%20your%20local%20branch">Get started with Git and Visual Studio - Azure Repos | Microsoft Learn</a>)。言い換えると「<strong>サーバー上の最新履歴を手元に持ってくる</strong>」操作です。フェッチ後、手元のGitツールで差分や履歴を確認し、必要に応じて後述のマージ操作を行えます。<br>
+※SVNにはフェッチに相当する直接の操作はありません。SVNの更新は後述のプルに近く、フェッチは「更新情報の取得だけ行い適用はしない」というGit特有の操作です。</p>
+</li>
+<li>
+<p><strong>プル (Pull):</strong> リモートリポジトリから最新のコミットを取得し、<strong>現在チェックアウト中のローカルブランチにマージ</strong>（統合）します (<a href="https://docs.microsoft.com/en-us/azure/devops/repos/git/gitquickstart?view=azure-devops-2020&amp;tabs=visual-studio#:~:text=,commits%20into%20your%20local%20branch">Get started with Git and Visual Studio - Azure Repos | Microsoft Learn</a>)。一般的には「フェッチ＋自動マージ」をまとめて行う操作と考えてください。SVNの「更新(Update)」に近い動作ですが、<strong>ローカルの履歴にマージコミットが追加される</strong>点が異なります（SVNではマージの概念が薄いですが、Gitのプルでは内部的にマージ処理が発生します）。プル実行後は、リモートと同じ最新コードが手元のブランチに反映されます。</p>
+<blockquote>
+<p><strong>注意:</strong> プル時に、ローカルの変更とリモートの変更が<strong>同じ箇所を編集していた場合</strong>コンフリクト（衝突）が発生します。この場合Visual Studio上でマージエディタ（競合解決画面）が表示され、自分の変更とリモートの変更のどちらを採用するかを選ぶ必要があります。これはSVNの更新時にコンフリクトが起きる場合と同様です。落ち着いて変更点を比較し、必要な方を選択してマージしましょう。コンフリクトを解消してコミットすればプル処理が完了します。</p>
+</blockquote>
+</li>
+<li>
+<p><strong>プッシュ (Push):</strong> ローカルのコミット履歴をリモートリポジトリに<strong>送信</strong>し、リモート（Azure DevOps上のGitリポジトリ）を更新します (<a href="https://docs.microsoft.com/en-us/azure/devops/repos/git/gitquickstart?view=azure-devops-2020&amp;tabs=visual-studio#:~:text=,a%20Pull%20then%20a%20Push">Get started with Git and Visual Studio - Azure Repos | Microsoft Learn</a>)。SVNの「コミット」に相当する操作で、プッシュにより他の開発者がプルしてあなたのコミットを取り込めるようになります。**注意点として、プッシュはリモートの最新状態を自分が反映していないと実行できません。**自分のローカルが古いままプッシュしようとするとエラーになり、その場合は一度プルして最新状態を取り込んでから再度プッシュします（他人の変更と競合した場合に上書きしてしまうのを防ぐためです）。</p>
+</li>
+</ul>
+<blockquote>
+<p><strong>ポイント:</strong> Gitで他者と変更を共有する基本サイクルは、「<strong>プル（他人の変更を取得）→ 作業・コミット（自分の変更を記録）→ プッシュ（自分の変更を共有）</strong>」の繰り返しです (<a href="https://ja.wikipedia.org/wiki/Git#:~:text=1,%E6%9B%B4%E6%96%B0%E3%81%95%E3%82%8C%E3%81%9F%E4%B8%AD%E5%BF%83%E3%83%AA%E3%83%9D%E3%82%B8%E3%83%88%E3%83%AA%EF%BC%88%E4%BB%96%E8%80%85%E3%81%AE%E4%BD%9C%E6%A5%AD%E5%86%85%E5%AE%B9%E3%82%82%E7%B5%B1%E5%90%88%E3%81%95%E3%82%8C%E3%81%A6%E3%81%84%E3%82%8B%EF%BC%89%E3%82%92%E3%83%AD%E3%83%BC%E3%82%AB%E3%83%AB%E3%81%AE%E8%A4%87%E8%A3%BD%E3%81%AB%E3%82%82%E5%8F%8D%E6%98%A0%E3%81%99%E3%82%8B%20%28git%20pull%29%E3%80%82%E3%81%93%E3%82%8C%E3%81%AB%E3%82%88%E3%82%8A%E3%83%AD%E3%83%BC%E3%82%AB%E3%83%AB%E7%92%B0%E5%A2%83%E3%81%AE%E3%82%B3%E3%83%BC%E3%83%89%E3%82%82%E6%9C%80%E6%96%B0%E3%81%AE%E5%86%85%E5%AE%B9%E3%81%AB%E3%81%AA%E3%82%8B%E3%81%AE%E3%81%A7%E3%80%81%E6%94%B9%E3%82%81%E3%81%A6%E3%82%B9%E3%83%86%E3%83%83%E3%83%972%E3%81%AE%E4%BD%9C%E6%A5%AD%E3%82%92%E8%A1%8C%E3%81%86%E3%80%82">Git - Wikipedia</a>)。SVNで言う「Update → 編集 → Commit」に対し、Gitではコミットと共有が分離している点が大きな違いです。このため、作業中はこまめにローカルコミットし、適切なタイミングでプルやプッシュを行う運用になります。最初は手順が増えるように感じますが、<strong>ローカルで履歴を保持できる安心感</strong>と<strong>柔軟な同期タイミング</strong>が得られるため、慣れると効率的に感じられるでしょう。</p>
+</blockquote>
+<h2 id="3-基本のブランチ運用ルールmain--develop--bugfix">3. 基本のブランチ運用ルール（main / develop / bugfix）</h2>
+<p>Gitでは複数のブランチを活用することで、並行作業やリリース準備を円滑に行えます。ここでは本プロジェクトで採用する<strong>基本的なブランチ運用ルール</strong>を説明します。ブランチは大きく「main」「develop」「bugfix」の3種類を使用します。</p>
+<ul>
+<li>
+<p><strong>mainブランチ:</strong> 製品リリース用の<strong>メインブランチ</strong>です。SVNでいう「trunk」に近い立ち位置ですが、本運用では常にリリース可能な安定コードのみを含みます。リリース版のソースコードを管理し、基本的にこのブランチ上で直接開発作業は行いません。変更は後述するdevelopブランチからのマージや、緊急のバグ修正(bugfixブランチ経由)のみとし、常にデプロイ可能な状態を保ちます。</p>
+</li>
+<li>
+<p><strong>developブランチ:</strong> 開発作業の<strong>デフォルトブランチ</strong>です。新機能の追加や改良、リファクタリングなど日常的な開発作業はこのdevelopブランチ上で行います。開発中の最新コードが集約されるブランチで、十分にテストされたらmainブランチにマージしてリリースします（後述）。SVNには明確な開発用メインラインの概念はありませんでしたが、Gitではこのように開発用ブランチを設けて、リリースブランチ(main)と分けて管理する運用が一般的です。</p>
+</li>
+<li>
+<p><strong>bugfixブランチ:</strong> 本番リリース中のバージョンに対する<strong>緊急のバグ修正</strong>に使用する一時的なブランチです。運用上、mainブランチでリリースした後に重大な不具合が見つかった場合など、mainから派生させてbugfixブランチを作成し、修正を行います。修正が完了したらmainブランチにマージし、その修正を含む新しいリリースを行います。また、同じ修正をdevelopブランチにも適用して、次回リリースに修正内容が取り込まれるようにします。バグ修正が完了し各ブランチに反映したら、bugfixブランチは不要になるため削除します（履歴はmainおよびdevelopに残るので安心してください）。</p>
+</li>
+</ul>
+<blockquote>
+<p><strong>補足:</strong> 開発規模によっては、機能ごとに<strong>フィーチャーブランチ</strong>(feature branch)を作成して作業し、完了後にdevelopへマージするケースもあります。本プロジェクトでは基本的に小規模な機能追加は直接developブランチ上で行いますが、大きな機能実装時に作業用ブランチを切っても構いません。その場合も、最終的にはdevelopブランチへマージして統合する運用となります。</p>
+</blockquote>
+<h2 id="4-ケーススタディ具体的な作業例">4. ケーススタディ：具体的な作業例</h2>
+<p>ここからは、実際の作業シナリオに沿ってGitの運用手順を見ていきます。<strong>Visual Studio 2022のGUI</strong>を使用した手順を中心に、スクリーンショット挿入予定箇所を示しながら説明します。</p>
+<h3 id="41-既存アプリの機能追加手元にクローンがない場合">4.1 既存アプリの機能追加（手元にクローンがない場合）</h3>
+<p><strong>状況:</strong> 新たに既存アプリに機能追加の開発を始めるにあたり、まだ手元にそのリポジトリのクローンがないケースです。まずリポジトリをクローンし、developブランチ上で開発を行います。</p>
+<p><strong>手順:</strong></p>
+<ol>
+<li>
+<p><strong>リポジトリのクローン:</strong> Visual Studio 2022を起動し、メニューバーから <strong>[Git] -&gt; [リポジトリのクローン]</strong> を選択します。<br>
+（ここにスクリーンショットを挿入：VSの「リポジトリのクローン」ダイアログ）</p>
+</li>
+<li>
+<p><strong>クローン先の指定:</strong> 「リポジトリのクローン」ウィンドウで、クローンしたい<strong>リポジトリのURL</strong>を入力し、ローカルに保存するフォルダを指定します。Azure DevOps Server 2020上のプロジェクトの場合、<strong>[Azure DevOps]</strong> を選択して組織名/プロジェクトからリポジトリをブラウズすることも可能です。入力できたら**[クローン]** ボタンをクリックします。<br>
+（ここにスクリーンショットを挿入：URLを入力した状態のダイアログ）</p>
+</li>
+<li>
+<p><strong>ソリューションのオープン:</strong> クローン処理が完了すると、リポジトリがローカルに作成されます。Visual Studioで自動的にプロジェクトが開かない場合は、クローンしたフォルダから <code>.sln</code> ファイル（ソリューションファイル）を開いてください。開いたら、Visual Studio上部の<strong>Gitブランチ表示</strong>（現在チェックアウト中のブランチ名が表示されている部分）を確認します。おそらくデフォルトでは<code>main</code>ブランチになっているため、開発用の<code>develop</code>ブランチに切り替えます。</p>
+</li>
+<li>
+<p><strong>developブランチへ切り替え:</strong> Visual Studioの画面下部（ステータスバー）や上部のGitメニューから現在のブランチ名をクリックすると、ブランチ一覧が表示されます。その中から<strong>develop</strong>ブランチを選択します（もし表示されていない場合は「リモートブランチを表示/フェッチ」等の操作を行い取得します）。developブランチを選ぶと、ローカルにそのブランチがチェックアウトされます。<br>
+（ここにスクリーンショットを挿入：ブランチ一覧からdevelopを選択しているところ）</p>
+<ul>
+<li><strong>Tip:</strong> 初回クローン直後であれば、リモートのdevelopブランチを初めてチェックアウトする際にローカルブランチが作成されます。Visual Studioが自動で案内してくれる場合もありますが、表示されない場合は<strong>Gitリポジトリウィンドウ</strong>（旧Team Explorerのブランチ管理画面）で<code>origin/develop</code>を右クリックして**[チェックアウト]**することもできます。</li>
+</ul>
+</li>
+<li>
+<p><strong>最新状態の取得（プル）:</strong> 開発を始める前に、念のためリモートの最新状態を取得します。メニューから <strong>[Git] -&gt; [プル]</strong> を実行し、現在のdevelopブランチにリモート（origin/develop）の最新コミットを取り込みます。クローン直後で他に更新が無ければ「最新です」等のメッセージが出るだけですが、他の人が直前にコミットしていた場合その変更が反映されます。<br>
+（ここにスクリーンショットを挿入：プル実行後の結果メッセージ or プル操作ボタン）</p>
+</li>
+<li>
+<p><strong>機能追加の実装:</strong> developブランチ上で、目的の機能を実装します。ソースコードを編集し、ファイルを追加・変更します。変更内容は<strong>ソリューションエクスプローラー</strong>上で「+」「~」などのアイコンが付き、Gitで追跡されていることがわかります。適宜ビルドやテストを行い、機能が正しく動作することを確認します。<br>
+（ここにスクリーンショットを挿入：コード編集後、変更が生じたファイル一覧（Git変更ウィンドウ））</p>
+</li>
+<li>
+<p><strong>ローカルでコミット:</strong> 機能実装が完了したら、変更を<strong>コミット</strong>します。Visual Studioの <strong>Git変更</strong> ウィンドウ（既定では画面右に表示。表示されていなければ <strong>[Git] -&gt; [Git の変更]</strong> から開く）で、変更内容を確認します。問題なければ上部のテキストボックスに<strong>コミットメッセージ</strong>を入力します（どのような変更か簡潔に記述します）。メッセージ例: <em>&quot;〇〇機能を追加しました&quot;</em> など。メッセージを入力後、<strong>[すべてコミット]</strong> ボタン（✔ アイコン）をクリックします。これで変更がローカルリポジトリにコミットされました。<br>
+（ここにスクリーンショットを挿入：コミットメッセージ入力とコミット実行ボタン）</p>
+<ul>
+<li><strong>補足:</strong> Visual Studioの設定によっては「コミットとプッシュを同時に行う」オプションが有効になっている場合があります。その場合、✔ボタンの横に小さな矢印があり、「コミットしてプッシュ」のようなメニューが選べます。初心者のうちはコミットとプッシュを分けて確実に操作する方が安心なので、ここではコミット単体を行いました。</li>
+</ul>
+</li>
+<li>
+<p><strong>リモートへプッシュ:</strong> コミットした変更をチームと共有するため、リモートに<strong>プッシュ</strong>します。Git変更ウィンドウ上部にある <strong>[同期]</strong> アイコン（🔄）または <strong>[プッシュ]</strong> ボタンをクリックしてください。これにより、先ほどのコミットがAzure DevOpsのリポジトリ（origin/develop）に送信されます。プッシュが成功すると、Azure DevOps上でdevelopブランチにコミットが反映され、他のメンバーはプルすることでこの変更を取得できるようになります。<br>
+（ここにスクリーンショットを挿入：プッシュ実行後のステータス表示（例：「プッシュが完了しました」メッセージ））</p>
+<ul>
+<li><strong>注意:</strong> プッシュ時にエラーが出た場合、リモートに自分のローカルにないコミットが存在する可能性があります。その場合はプッシュの前に<strong>プル</strong>を行ってローカルを最新状態にしてから再度プッシュしてください（既に手順5でプル済みなら通常問題ありません）。</li>
+</ul>
+</li>
+</ol>
+<p>以上で、新機能の追加作業（クローンが無い状態からの開始）は完了です。あとは必要に応じてAzure DevOps上でプルリクエストを作成し、レビューや本番マージのプロセスを進めます（小規模チームではそのままdevelopに溜めておき、リリース時にまとめてmainにマージする運用でもOKです）。</p>
+<h3 id="42-既存アプリの機能追加手元にクローンがある場合">4.2 既存アプリの機能追加（手元にクローンがある場合）</h3>
+<p><strong>状況:</strong> すでにローカルにリポジトリをクローン済みで、過去に作業したことがあるプロジェクトに機能追加を行うケースです。最新コードを取り込みつつ、developブランチ上で作業します。</p>
+<p><strong>手順:</strong></p>
+<ol>
+<li>
+<p><strong>最新コードの取得:</strong> Visual Studioで該当プロジェクトのソリューションを開きます（既にクローン済みのフォルダから <code>.sln</code> をダブルクリック）。開いたら、まず<strong>現在のブランチ</strong>を確認します。前回作業時のブランチのままになっている可能性があります。<strong>developブランチで作業する</strong>ので、もし別のブランチ（例: main）になっていたらdevelopに切り替えてください。続いて、リモートから最新の変更を取り込むため <strong>[Git] -&gt; [プル]</strong> を実行します。これにより現在のブランチ(develop)に他のメンバーがコミットした内容があれば反映されます（「最新です」と表示された場合、既に最新です）。<br>
+（ここにスクリーンショットを挿入：developブランチをプルして最新化しているところ）</p>
+</li>
+<li>
+<p><strong>新機能の実装:</strong> ローカルのdevelopブランチが最新化できたら、追加する機能の実装を行います。手順4.1のステップ6と同様にコードを編集し、ビルド・テストで動作確認します。他のメンバーの変更内容も取り込んだ状態なので、安心して開発を進められます。</p>
+</li>
+<li>
+<p><strong>コミットとプッシュ:</strong> 実装ができたら変更をコミットし、リモートにプッシュします。手順4.1のステップ7〜8と同様です。<strong>Git変更</strong>ウィンドウで変更を確認し、メッセージを添えてコミット、続いてプッシュを実行します。<br>
+（ここにスクリーンショットを挿入：コミットメッセージとプッシュ実行ボタン（既出の場合省略可））</p>
+<ul>
+<li><strong>メッセージの例:</strong> 変更内容が小さい場合でも、後から履歴を見て分かりやすいように「〇〇機能のUI調整」など具体的なコミットメッセージを付けましょう。コミットを細かく分けている場合は、それぞれ意味のある単位でメッセージを書く習慣をつけると良いです。</li>
+</ul>
+</li>
+<li>
+<p><strong>開発継続:</strong> 以上で機能追加の変更がリポジトリに反映されました。以降、他の作業者が同じdevelopブランチ上で別機能を開発している場合は、適宜プルして最新状態を取り込みながら作業を継続してください。複数人で同時にdevelopブランチを更新する場合、こまめなプルとプッシュが衝突を防ぐコツです。</p>
+</li>
+</ol>
+<h3 id="43-バグ修正作業を行う場合bugfixブランチの作成完了まで">4.3 バグ修正作業を行う場合（bugfixブランチの作成〜完了まで）</h3>
+<p><strong>状況:</strong> 本番リリース中のバージョンに不具合が見つかり、緊急に修正を適用するケースです。現在リリースされているコードはmainブランチで管理されているため、mainから派生したbugfixブランチを作成して修正を行い、修正完了後にmainへマージします。また、その修正をdevelopブランチにも取り込みます。</p>
+<p><strong>手順:</strong></p>
+<ol>
+<li>
+<p><strong>mainブランチへ切り替え:</strong> Visual Studioで該当リポジトリを開き、<strong>mainブランチ</strong>をチェックアウトします。現在developで作業中の場合は一旦コミットしてからブランチを切り替えます（コミットせずブランチを変えると変更を一時退避する必要があり初心者には難しいため、作業中の変更がある場合は先にコミット推奨）。画面下部のブランチ名をクリックして<strong>main</strong>を選択します。<br>
+（ここにスクリーンショットを挿入：developからmainブランチに切り替える操作）</p>
+</li>
+<li>
+<p><strong>最新リリース状態の取得:</strong> mainブランチに切り替えたら、リモートの最新状態を取り込みます。<strong>[Git] -&gt; [プル]</strong> を実行し、リモートのmainブランチ上のコミットをローカルに反映します。これにより、直近のリリース以降にmain上で行われた更新（例えば過去のバグフィックスなど）があれば取り込まれます。プル後のmainブランチがリリース中のコードのベースとなります。</p>
+</li>
+<li>
+<p><strong>bugfixブランチの作成:</strong> mainブランチ上でバグ修正用のブランチを切り出します。Visual Studioの <strong>Git</strong> メニューから <strong>[新しいブランチの作成]</strong> を選択します。ダイアログが表示されたら、ブランチ名を入力します。命名規則はチームで決めている場合に従いますが、例として「<code>bugfix/fix-login-error</code>」のように<code>bugfix/</code>プレフィックス＋内容で命名します。<strong>ブランチの作成元</strong>が<code>main</code>になっていることを確認し、<strong>[ブランチを作成してチェックアウト]</strong>（作成後そのブランチに切り替えるオプション）を有効にして作成を実行します。<br>
+（ここにスクリーンショットを挿入：新しいブランチ作成ダイアログにbugfixブランチ名を入力しているところ）</p>
+<ul>
+<li><strong>確認:</strong> Visual Studioのウィンドウ下部に表示されるブランチ名が、新しく作成したbugfixブランチ名に切り替わっていることを確認してください。これで以降のコミットはbugfixブランチ上に記録されます。</li>
+</ul>
+</li>
+<li>
+<p><strong>バグの修正:</strong> bugfixブランチ上で問題の修正を行います。該当するコードを編集し、不具合が解消されるよう変更します。修正箇所が複数ファイルにわたる場合は漏れがないよう注意します。修正後、ビルド・テストを実施し、不具合が解消されたことを確認してください。</p>
+</li>
+<li>
+<p><strong>修正内容をコミット:</strong> 修正が完了したら、変更をローカルリポジトリにコミットします。手順4.1で説明したのと同様にGit変更ウィンドウで変更を確認し、<strong>コミットメッセージ</strong>を入力してコミットします。メッセージは不具合の内容と対策がわかるように「Fix: ○○のバグを修正」等とすると履歴上後で追跡しやすくなります。<br>
+（ここにスクリーンショットを挿入：バグ修正の変更をコミットするところ）</p>
+</li>
+<li>
+<p><strong>リモートへプッシュ（必要に応じて）:</strong> バグ修正を他のチームメンバーと共有するため、必要であればbugfixブランチを<strong>プッシュ</strong>します。プッシュするとAzure DevOps上にも同名のbugfixブランチが作成され、共同作業者がその修正を取り込んだりレビューしたりできるようになります。ただし、緊急修正の場合自分だけで作業を完結させることも多いので、この段階のプッシュは省略しても構いません（後でmainにマージすれば結果的に共有されます）。<br>
+（ここにスクリーンショットを挿入：プッシュ実行（bugfixブランチ））</p>
+</li>
+<li>
+<p><strong>mainブランチへのマージ:</strong> 修正をリリースに反映するため、bugfixブランチの変更をmainブランチにマージします。まず<strong>mainブランチをチェックアウト</strong>します（Gitメニューのブランチ一覧からmainを選択）。次に、Visual Studioで<strong>マージ操作</strong>を行います。Gitメニューから <strong>[ブランチの管理]</strong>（またはGitリポジトリウィンドウ）を開き、修正を行ったbugfixブランチを選択して右クリックし、<strong>「現在のブランチにマージ」</strong> を実行します。現在のブランチ(メイン)にbugfixブランチのコミットが取り込まれます。<br>
+（ここにスクリーンショットを挿入：mainブランチ上でbugfixブランチをマージしている操作画面）</p>
+<ul>
+<li><strong>マージコミットの確認:</strong> マージが成功すると、Git変更ウィンドウに自動生成された<strong>マージコミット</strong>のメッセージが表示されます（fast-forwardマージの場合は表示されないこともあります）。必要に応じてメッセージを編集し、<strong>コミット</strong>ボタンを押してマージコミットを確定します。コンフリクトが発生した場合は、VS上で解決してからコミットします。</li>
+</ul>
+</li>
+<li>
+<p><strong>mainブランチのプッシュ（リリース適用）:</strong> mainブランチに修正が取り込まれたら、その状態をリモートにプッシュします。<strong>[Git] -&gt; [プッシュ]</strong> を実行し、Azure DevOps上のmainブランチを更新します。これで本番リポジトリに修正が反映され、リリース済みの環境に対してはデプロイやパッチ適用の準備ができました（デプロイ手順は本マニュアルの範囲外とします）。</p>
+</li>
+<li>
+<p><strong>developブランチへの修正反映:</strong> mainで修正したバグは、並行して進めている開発ブランチ（develop）にも取り込んでおく必要があります。修正を反映しないと、次回リリース時に同じ不具合が復活してしまう恐れがあるためです。修正の取り込み方法は2通りありますが、ここでは<strong>bugfixブランチをdevelopにマージ</strong>する方法を取ります。</p>
+<ul>
+<li>Visual Studioで<strong>developブランチ</strong>をチェックアウトします。</li>
+<li><strong>マージ操作</strong>にて、先ほどのbugfixブランチを現在のブランチ(develop)にマージします（Gitメニューの[ブランチの管理]からbugfixブランチを右クリック -&gt; 「現在のブランチ(develop)にマージ」）。</li>
+<li>必要に応じてコンフリクトを解消し、マージコミットを作成してコミットします。</li>
+<li>developブランチを<strong>プッシュ</strong>してリモート(origin/develop)を更新します。</li>
+</ul>
+<p>以上により、developブランチにもバグ修正が取り込まれました。これで今後の開発にも修正内容が反映され、mainとdevelopのコード差異が埋ままります。</p>
+</li>
+<li>
+<p><strong>不要になったブランチの削除（任意）:</strong> 修正に使用したbugfixブランチは役目を終えたら削除して構いません。ローカルのGitリポジトリでは <strong>[Git] -&gt; [ブランチの管理]</strong> からbugfixブランチを右クリックし、<strong>[ブランチの削除]</strong> を選択します。また、リモートにプッシュしていた場合はAzure DevOps上でもブランチを削除できます（Pull Requestを作成してマージ完了した場合は自動削除オプションで消えることもあります）。<strong>ブランチを削除しても、その中のコミット履歴はマージ先のブランチ（mainやdevelop）に残っている</strong>ため安心してください。</p>
+</li>
+</ol>
+<h3 id="44-リリース作業時の流れdevelop--mainへのマージ">4.4 リリース作業時の流れ（develop → mainへのマージ）</h3>
+<p><strong>状況:</strong> 開発中の機能が一通り完成し、次のリリースを行う段階になりました。ここでは、日々の開発が行われていたdevelopブランチの内容を、本番用のmainブランチにマージしてリリース準備をする流れを説明します。</p>
+<p><strong>手順:</strong></p>
+<ol>
+<li>
+<p><strong>最終確認とブランチの最新化:</strong> 現在のdevelopブランチの内容がリリース可能な状態か確認します。必要ならコードのレビューやテストを完了させます。また、mainブランチに過去入ったバグ修正（hotfix）がdevelopに取り込まれているか確認します。もしdevelopに取り込まれていない修正がmainにあれば、事前にdevelopブランチ上で<strong>mainブランチをマージ</strong>して差分を反映させておきます（こうすることで、リリース時に修正漏れがなくなります）。準備が整ったら、Visual Studioでdevelopブランチの最新コミットをプッシュしておき、リモートとも同期した状態にします。</p>
+</li>
+<li>
+<p><strong>mainブランチへの切り替え:</strong> リリース作業を行うため<strong>mainブランチ</strong>をチェックアウトします（Visual StudioのGitメニューからmainを選択）。リモートのmainも念のためプルして最新にしておきます。続いて、<strong>developブランチをmainにマージ</strong>します。</p>
+</li>
+<li>
+<p><strong>developブランチのマージ:</strong> Visual Studio上で <strong>[Git] -&gt; [ブランチの管理]</strong> を開き、<strong>developブランチ</strong>を右クリックして <strong>「現在のブランチにマージ」</strong> を実行します。現在のブランチ(メイン)に開発内容がすべて取り込まれます。コミット履歴上、developの全コミットがmainに反映され、１つのマージコミットが作られるか（またはfast-forwardでそのまま進む）形になります。<br>
+（ここにスクリーンショットを挿入：mainブランチ上でdevelopをマージしているところ）</p>
+<ul>
+<li><strong>コンフリクトの対処:</strong> もしこの時点でコンフリクトが発生した場合、Visual Studioの指示に従い解消します。通常、事前にdevelopを最新化していれば大きなコンフリクトは起きませんが、ファイルの削除やフォーマットの差異などで軽微な衝突が起こる可能性があります。各差分を確認し、正しい最終コードになるようマージしてください。</li>
+</ul>
+</li>
+<li>
+<p><strong>リリースコミットの確定:</strong> developの内容がmainに取り込まれたら、<strong>コミット</strong>して確定させます（マージコミットメッセージはそのままでも、必要に応じて「Release vX.X 統合」などに編集しても構いません）。これでmainブランチ上にリリース用の最新コードが揃いました。</p>
+</li>
+<li>
+<p><strong>リモートへのプッシュ:</strong> mainブランチの最新状態をリモート（origin/main）にプッシュします。<strong>[Git] -&gt; [プッシュ]</strong> を実行し、Azure DevOps上のmainブランチを更新します。プッシュが成功すると、リポジトリのmainがリリース準備完了のコードに置き換わります。他のメンバーには通知するか、必要に応じてタグ付けなどを行いましょう。</p>
+</li>
+<li>
+<p><strong>タグの作成（任意）:</strong> リリースのバージョン識別用に、mainブランチの最新コミットに**タグ(Tag)**を付与することができます。タグはビルド番号やバージョン名を付けると後から参照しやすくなります。Visual Studioでは <strong>[Git] -&gt; [タグの作成]</strong> から現在チェックアウト中のコミットにタグ付けできます（例: <code>v1.2.0</code> 等）。タグを作成するとリモートにプッシュする際にタグ情報も共有され、Azure DevOps上でもタグ一覧に表示されます。</p>
+</li>
+<li>
+<p><strong>リリースの実施:</strong> Git上の準備が整ったので、あとはリリースのプロセス（ビルド/デプロイ）に移ります。Azure DevOpsのパイプラインを利用している場合は、mainブランチの更新をトリガーにCI/CDが走り、新バージョンがデプロイされるでしょう。手動デプロイの場合も、mainブランチのコードを元にリリース用のビルドを行います。</p>
+</li>
+<li>
+<p><strong>次の開発サイクルへ:</strong> リリースが完了したら、引き続き新しい開発はdevelopブランチ上で行います。必要ならば<code>develop</code>ブランチのバージョン番号やREADMEを更新し、次リリースに向けた開発サイクルを開始します。基本的にmainブランチは次のリリースまで変更されない状態となり、開発は再びdevelop上で進めていきます。</p>
+</li>
+</ol>
+<blockquote>
+<p><strong>注意:</strong> リリースマージ時は<strong>マージする方向</strong>を間違えないよう注意してください。必ず「mainブランチにdevelopブランチをマージ」します（develop上でmainをマージしてしまうと、開発中の変更がmainに反映されず大変危険です）。Visual Studioで操作する際も、<strong>現在mainブランチにチェックアウトしていること</strong>を確認してからdevelopのマージを実行しましょう。</p>
+</blockquote>
+<hr>
+<p>以上、Git初心者向けに基本概念と日常運用手順、ケース別の対応方法を説明しました。最初はSVNとの違いに戸惑うかもしれませんが、<strong>Visual StudioのGUI操作</strong>と<strong>ブランチ運用ルール</strong>に慣れれば、Gitでも安心して開発を進められるようになります。困ったときはこのマニュアルを見直し、落ち着いて対処してください。Gitは強力なツールですが、手順を踏めば怖がる必要はありません。ぜひ積極的に活用していきましょう！</p>
+
+            
+            <script async type="text/javascript">
+/* From extension marp-team.marp-vscode */
+(()=>{var W=Object.defineProperty;var K=(w,h,x)=>h in w?W(w,h,{enumerable:!0,configurable:!0,writable:!0,value:x}):w[h]=x;var o=(w,h)=>W(w,"name",{value:h,configurable:!0});var v=(w,h,x)=>K(w,typeof h!="symbol"?h+"":h,x);(()=>{var w={32:(y,S,g)=>{y.exports=g(924)},924:(y,S)=>{"use strict";var g;g={value:!0};const E={h1:{proto:o(()=>HTMLHeadingElement,"proto"),attrs:{role:"heading","aria-level":"1"},style:"display: block; font-size: 2em; margin-block-start: 0.67em; margin-block-end: 0.67em; margin-inline-start: 0px; margin-inline-end: 0px; font-weight: bold;"},h2:{proto:o(()=>HTMLHeadingElement,"proto"),attrs:{role:"heading","aria-level":"2"},style:"display: block; font-size: 1.5em; margin-block-start: 0.83em; margin-block-end: 0.83em; margin-inline-start: 0px; margin-inline-end: 0px; font-weight: bold;"},h3:{proto:o(()=>HTMLHeadingElement,"proto"),attrs:{role:"heading","aria-level":"3"},style:"display: block; font-size: 1.17em; margin-block-start: 1em; margin-block-end: 1em; margin-inline-start: 0px; margin-inline-end: 0px; font-weight: bold;"},h4:{proto:o(()=>HTMLHeadingElement,"proto"),attrs:{role:"heading","aria-level":"4"},style:"display: block; margin-block-start: 1.33em; margin-block-end: 1.33em; margin-inline-start: 0px; margin-inline-end: 0px; font-weight: bold;"},h5:{proto:o(()=>HTMLHeadingElement,"proto"),attrs:{role:"heading","aria-level":"5"},style:"display: block; font-size: 0.83em; margin-block-start: 1.67em; margin-block-end: 1.67em; margin-inline-start: 0px; margin-inline-end: 0px; font-weight: bold;"},h6:{proto:o(()=>HTMLHeadingElement,"proto"),attrs:{role:"heading","aria-level":"6"},style:"display: block; font-size: 0.67em; margin-block-start: 2.33em; margin-block-end: 2.33em; margin-inline-start: 0px; margin-inline-end: 0px; font-weight: bold;"},span:{proto:o(()=>HTMLSpanElement,"proto")},pre:{proto:o(()=>HTMLElement,"proto"),style:"display: block; font-family: monospace; white-space: pre; margin: 1em 0; --marp-auto-scaling-white-space: pre;"}},A="data-marp-auto-scaling-wrapper",p="data-marp-auto-scaling-svg",c="data-marp-auto-scaling-container",T=class T extends HTMLElement{constructor(){super();v(this,"container");v(this,"containerSize");v(this,"containerObserver");v(this,"svg");v(this,"svgComputedStyle");v(this,"svgPreserveAspectRatio","xMinYMid meet");v(this,"wrapper");v(this,"wrapperSize");v(this,"wrapperObserver");const s=o(t=>([e])=>{const{width:n,height:r}=e.contentRect;this[t]={width:n,height:r},this.updateSVGRect()},"e");this.attachShadow({mode:"open"}),this.containerObserver=new ResizeObserver(s("containerSize")),this.wrapperObserver=new ResizeObserver((...t)=>{s("wrapperSize")(...t),this.flushSvgDisplay()})}static get observedAttributes(){return["data-downscale-only"]}connectedCallback(){this.shadowRoot.innerHTML=`
+<style>
+  svg[${p}] { display: block; width: 100%; height: auto; vertical-align: top; }
+  span[${c}] { display: table; white-space: var(--marp-auto-scaling-white-space, nowrap); width: max-content; }
+</style>
+<div ${A}>
+  <svg part="svg" ${p}>
+    <foreignObject><span ${c}><slot></slot></span></foreignObject>
+  </svg>
+</div>
+    `.split(/\n\s*/).join(""),this.wrapper=this.shadowRoot.querySelector(`div[${A}]`)??void 0;const s=this.svg;this.svg=this.wrapper?.querySelector(`svg[${p}]`)??void 0,this.svg!==s&&(this.svgComputedStyle=this.svg?window.getComputedStyle(this.svg):void 0),this.container=this.svg?.querySelector(`span[${c}]`)??void 0,this.observe()}disconnectedCallback(){this.svg=void 0,this.svgComputedStyle=void 0,this.wrapper=void 0,this.container=void 0,this.observe()}attributeChangedCallback(){this.observe()}flushSvgDisplay(){const{svg:s}=this;s&&(s.style.display="inline",requestAnimationFrame(()=>{s.style.display=""}))}observe(){this.containerObserver.disconnect(),this.wrapperObserver.disconnect(),this.wrapper&&this.wrapperObserver.observe(this.wrapper),this.container&&this.containerObserver.observe(this.container),this.svgComputedStyle&&this.observeSVGStyle(this.svgComputedStyle)}observeSVGStyle(s){const t=o(()=>{const e=(()=>{const n=s.getPropertyValue("--preserve-aspect-ratio");return n?n.trim():`x${(({textAlign:r,direction:l})=>{if(r.endsWith("left"))return"Min";if(r.endsWith("right"))return"Max";if(r==="start"||r==="end"){let d=l==="rtl";return r==="end"&&(d=!d),d?"Max":"Min"}return"Mid"})(s)}YMid meet`})();e!==this.svgPreserveAspectRatio&&(this.svgPreserveAspectRatio=e,this.updateSVGRect()),s===this.svgComputedStyle&&requestAnimationFrame(t)},"t");t()}updateSVGRect(){let s=Math.ceil(this.containerSize?.width??0);const t=Math.ceil(this.containerSize?.height??0);this.dataset.downscaleOnly!==void 0&&(s=Math.max(s,this.wrapperSize?.width??0));const e=this.svg?.querySelector(":scope > foreignObject");if(e?.setAttribute("width",`${s}`),e?.setAttribute("height",`${t}`),this.svg&&(this.svg.setAttribute("viewBox",`0 0 ${s} ${t}`),this.svg.setAttribute("preserveAspectRatio",this.svgPreserveAspectRatio),this.svg.style.height=s<=0||t<=0?"0":""),this.container){const n=this.svgPreserveAspectRatio.toLowerCase();this.container.style.marginLeft=n.startsWith("xmid")||n.startsWith("xmax")?"auto":"0",this.container.style.marginRight=n.startsWith("xmi")?"auto":"0"}}};o(T,"s");let i=T;const m=o((a,{attrs:u={},style:s})=>class extends a{constructor(...t){super(...t);for(const[e,n]of Object.entries(u))this.hasAttribute(e)||this.setAttribute(e,n);this._shadow()}static get observedAttributes(){return["data-auto-scaling"]}connectedCallback(){this._update()}attributeChangedCallback(){this._update()}_shadow(){if(!this.shadowRoot)try{this.attachShadow({mode:"open"})}catch(t){if(!(t instanceof Error&&t.name==="NotSupportedError"))throw t}return this.shadowRoot}_update(){const t=this._shadow();if(t){const e=s?`<style>:host { ${s} }</style>`:"";let n="<slot></slot>";const{autoScaling:r}=this.dataset;r!==void 0&&(n=`<marp-auto-scaling exportparts="svg:auto-scaling" ${r==="downscale-only"?"data-downscale-only":""}>${n}</marp-auto-scaling>`),t.innerHTML=e+n}}},"r");let b;const z=Symbol();let $;const V="marpitSVGPolyfill:setZoomFactor,",C=Symbol(),j=Symbol(),G=o(()=>{const a=navigator.vendor==="Apple Computer, Inc.",u=a?[D]:[],s={then:o(t=>(a?(async()=>{if($===void 0){const e=document.createElement("canvas");e.width=10,e.height=10;const n=e.getContext("2d"),r=new Image(10,10),l=new Promise(d=>{r.addEventListener("load",()=>d())});r.crossOrigin="anonymous",r.src="data:image/svg+xml;charset=utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%2210%22%20viewBox%3D%220%200%201%201%22%3E%3CforeignObject%20width%3D%221%22%20height%3D%221%22%20requiredExtensions%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxhtml%22%3E%3Cdiv%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxhtml%22%20style%3D%22width%3A%201px%3B%20height%3A%201px%3B%20background%3A%20red%3B%20position%3A%20relative%22%3E%3C%2Fdiv%3E%3C%2FforeignObject%3E%3C%2Fsvg%3E",await l,n.drawImage(r,0,0),$=n.getImageData(5,5,1,1).data[3]<128}return $})().then(e=>{t?.(e?[D]:[])}):t?.([]),s),"then")};return Object.assign(u,s)},"g");let H,O;function D(a){const u=typeof a=="object"&&a.target||document,s=typeof a=="object"?a.zoom:a;window[j]||(Object.defineProperty(window,j,{configurable:!0,value:!0}),document.body.style.zoom=1.0001,document.body.offsetHeight,document.body.style.zoom=1,window.addEventListener("message",({data:e,origin:n})=>{if(n===window.origin)try{if(e&&typeof e=="string"&&e.startsWith(V)){const[,r]=e.split(","),l=Number.parseFloat(r);Number.isNaN(l)||(O=l)}}catch(r){console.error(r)}}));let t=!1;Array.from(u.querySelectorAll("svg[data-marpit-svg]"),e=>{var n,r,l,d;e.style.transform||(e.style.transform="translateZ(0)");const f=s||O||e.currentScale||1;H!==f&&(H=f,t=f);const P=e.getBoundingClientRect(),{length:Z}=e.children;for(let F=0;F<Z;F+=1){const k=e.children[F];if(k.getScreenCTM){const _=k.getScreenCTM();if(_){const Y=(r=(n=k.x)===null||n===void 0?void 0:n.baseVal.value)!==null&&r!==void 0?r:0,U=(d=(l=k.y)===null||l===void 0?void 0:l.baseVal.value)!==null&&d!==void 0?d:0,J=k.children.length;for(let R=0;R<J;R+=1){const N=k.children[R];if(N.tagName==="SECTION"){const{style:q}=N;q.transformOrigin||(q.transformOrigin=`${-Y}px ${-U}px`),q.transform=`scale(${f}) matrix(${_.a}, ${_.b}, ${_.c}, ${_.d}, ${_.e-P.left}, ${_.f-P.top}) translateZ(0.0001px)`;break}}}}}}),t!==!1&&Array.from(u.querySelectorAll("iframe"),({contentWindow:e})=>{e?.postMessage(`${V}${t}`,window.origin==="null"?"*":window.origin)})}o(D,"u");function B({once:a=!1,target:u=document}={}){const s=function(t=document){if(t[C])return t[C];let e=!0;const n=o(()=>{e=!1,delete t[C]},"i");Object.defineProperty(t,C,{configurable:!0,value:n});let r=[],l=!1;(async()=>{try{r=await G()}finally{l=!0}})();const d=o(()=>{for(const f of r)f({target:t});l&&r.length===0||e&&window.requestAnimationFrame(d)},"r");return d(),n}(u);return a?(s(),()=>{}):s}o(B,"v"),H=1,O=void 0;const I=B,M=Symbol(),L=o((a=document)=>{if(typeof window>"u")throw new Error("Marp Core's browser script is valid only in browser context.");if(((e=document)=>{const n=window[z];n||customElements.define("marp-auto-scaling",i);for(const r of Object.keys(E)){const l=`marp-${r}`,d=E[r].proto();(b??(b=!!document.createElement("div",{is:"marp-auto-scaling"}).outerHTML.startsWith("<div is"),b))&&d!==HTMLElement?n||customElements.define(l,m(d,{style:E[r].style}),{extends:r}):(n||customElements.define(l,m(HTMLElement,E[r])),e.querySelectorAll(`${r}[is="${l}"]`).forEach(f=>{f.outerHTML=f.outerHTML.replace(new RegExp(`^<${r}`,"i"),`<${l}`).replace(new RegExp(`</${r}>$`,"i"),`</${l}>`)}))}window[z]=!0})(a),a[M])return a[M];const u=B({target:a}),s=o(()=>{u(),delete a[M]},"n"),t=Object.assign(s,{cleanup:s,update:o(()=>L(a),"update")});return Object.defineProperty(a,M,{configurable:!0,value:t}),t},"y");S.browser=L,g=L,g=I}},h={};function x(y){var S=h[y];if(S!==void 0)return S.exports;var g=h[y]={exports:{}};return w[y](g,g.exports,x),g.exports}o(x,"__webpack_require__");var Q={};(()=>{"use strict";var y=x(32);function S(){let p,c;const i=o(()=>{const m=document.getElementById("__marp-vscode"),b=!!m;p!==b?(document.body.classList.toggle("marp-vscode",b),b?c=(0,y.browser)():(c?.cleanup(),c=void 0),p=b):b&&c?.update(),p?(m&&g(m),E()):A()},"updateCallback");window.addEventListener("load",()=>window.setTimeout(i,100)),window.addEventListener("vscode.markdown.updateContent",i),i()}o(S,"preview");const g=o(p=>{p.querySelectorAll("[is]").forEach(c=>{if(c.nodeName.includes("-")||document.createElement(c.nodeName).constructor!==c.constructor)return;const{outerHTML:m}=c;c.outerHTML=m,console.debug("[marp-vscode] Custom element has been upgraded forcibly:",m.slice(0,m.indexOf(">")+1||void 0))})},"forceUpgradeCustomElements"),E=o(()=>{const p=document.querySelectorAll("style:not(#__marp-vscode-style,#_defaultStyles,[data-marp-vscode-body])"),c=document.querySelectorAll('link[rel="stylesheet"][href]:not([href*="marp-vscode"])');p.forEach(i=>{i.closest("#__marp-vscode")||(i.dataset.marpVscodeBody=i.textContent??"",i.textContent="")}),c.forEach(i=>{if(i.closest("#__marp-vscode"))return;const{href:m}=i;i.dataset.marpVscodeHref=m,i.removeAttribute("href")})},"removeStyles"),A=o(()=>{const p=document.querySelectorAll("style[data-marp-vscode-body]"),c=document.querySelectorAll("link[data-marp-vscode-href]");p.forEach(i=>{i.textContent=i.dataset.marpVscodeBody||"",delete i.dataset.marpVscodeBody}),c.forEach(i=>{i.href=i.dataset.marpVscodeHref||"",delete i.dataset.marpVscodeHref})},"restoreStyles");S()})()})();})();
+
+</script>
+
+        </body>
+        </html>
