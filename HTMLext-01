@@ -1,0 +1,179 @@
+// ----------------------------------------------------------------------------- // HtmlSectionExtractor.cs (.NET Framework 4.7.2+ 対応版 + 詳細コメント付き) // ----------------------------------------------------------------------------- // - HtmlAgilityPack による HTML セクション抽出ツール // - 任意タグ・正規表現による見出し検出（タグに依存しない） // - CloneNode による構造保持（DOCTYPE含む） // - Framework 互換の書き方（target-typed new 非使用） // - 継続保守しやすいよう、全体にコメントを強化 // -----------------------------------------------------------------------------
+
+using System; using System.Collections.Generic; using System.IO; using System.Linq; using System.Text; using System.Text.RegularExpressions; using HtmlAgilityPack;
+
+namespace HtmlSectionExtractorLib { /// <summary> /// 正規表現により指定された範囲の HTML を抽出し、元の HTML を保持しながら差し替えるユーティリティクラス。 /// CloneNode によって DOM を完全に保持したまま出力を生成するため、構造的整合性とスタイル保持に優れる。 /// </summary> public static class HtmlSectionExtractor { // スクリプトやスタイルなど、範囲検索の対象から除外するタグの一覧。 // これらのタグは DOM の構造上は存在していても、ユーザーが意図する見出しの範囲には通常含めないため除外。 private static readonly HashSet<string> IgnoredTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "script", "style", "noscript", "template" };
+
+/// <summary>
+    /// HTML 全体を受け取り、指定した正規表現パターンに一致する開始・終了ノードの間の内容だけを抽出・差し替えて出力する。
+    /// </summary>
+    public static string ExtractSectionKeepingLayoutRegex(
+        string html,
+        string startPattern,
+        string endPattern,
+        string containerXPath,
+        RegexOptions regexOptions,
+        Encoding encoding)
+    {
+        // 入力 HTML を HtmlDocument として読み込む（DOM を構築）
+        var src = new HtmlDocument();
+        src.OptionFixNestedTags = false;              // タグ構造修正を自動で行わない（忠実な保持）
+        src.OptionAutoCloseOnEnd = false;
+        src.OptionPreserveWhitespace = true;          // 改行・空白もそのまま維持
+        src.OptionOutputOriginalCase = true;          // 元タグの大小文字を保つ
+        src.LoadHtml(html);
+
+        // 正規表現オブジェクトを初期化（大文字小文字無視などを含む）
+        var startRegex = new Regex(startPattern, regexOptions);
+        var endRegex = new Regex(endPattern, regexOptions);
+
+        // 開始と終了ノードを走査して特定する
+        HtmlNode startNode = null;
+        HtmlNode endNode = null;
+
+        foreach (var node in src.DocumentNode.DescendantsAndSelf())
+        {
+            if (IsIgnored(node)) continue; // 除外対象ノード（script等）はスキップ
+
+            string text = node.InnerText;
+            if (startNode == null && startRegex.IsMatch(text))
+            {
+                startNode = node; // 開始ノードを初回一致で確定
+                continue;
+            }
+            if (startNode != null && endRegex.IsMatch(text))
+            {
+                endNode = node; // 開始ノードが決まった後に最初にマッチしたノードを終了とする
+                break;
+            }
+        }
+
+        // いずれかのノードが見つからなければエラーとする（保守上、原因の特定が容易になる）
+        if (startNode == null)
+            throw new InvalidOperationException("開始パターンが見つかりません。");
+        if (endNode == null)
+            throw new InvalidOperationException("終了パターンが見つかりません。");
+
+        // 開始から終了までのノードを列挙（開始ノードの次から、終了ノードの直前まで）
+        var rangeNodes = new List<HtmlNode>();
+        bool inRange = false;
+        foreach (var node in src.DocumentNode.DescendantsAndSelf())
+        {
+            if (node == startNode)
+            {
+                inRange = true;
+                continue;
+            }
+            if (node == endNode) break;
+            if (inRange) rangeNodes.Add(node);
+        }
+
+        // 新しい HtmlDocument を用意し、元の構造を CloneNode で複製してベースを構築
+        var dst = new HtmlDocument();
+        dst.OptionPreserveWhitespace = true;
+        dst.OptionOutputOriginalCase = true;
+
+        // DOCTYPE 宣言を保持（ブラウザの互換モード等に影響）
+        var docType = src.DocumentNode.ChildNodes.FirstOrDefault(n => n.NodeType == HtmlNodeType.DocumentType);
+        if (docType != null)
+            dst.DocumentNode.AppendChild(docType.CloneNode(false));
+
+        // <html> ルートノードをディープコピー（head/body 構造を含む）
+        var htmlRoot = src.DocumentNode.SelectSingleNode("//html");
+        if (htmlRoot == null)
+            throw new InvalidOperationException("<html> ルートが見つかりません。");
+        dst.DocumentNode.AppendChild(htmlRoot.CloneNode(true));
+
+        // 差し替え対象の XPath（例: //body や //div[@id='main']）で指定したコンテナを探す
+        var container = dst.DocumentNode.SelectSingleNode(containerXPath);
+        if (container == null)
+            throw new InvalidOperationException("指定の XPath に一致するノードが見つかりません。");
+
+        // 差し替え前に元の子ノードを全て削除
+        container.RemoveAllChildren();
+
+        // 抽出したノード群をクローンしながら新コンテナに追加
+        foreach (var n in rangeNodes)
+        {
+            container.AppendChild(n.CloneNode(true));
+        }
+
+        // 出力 HTML を返却（OuterHtml で文字列として取得）
+        return dst.DocumentNode.OuterHtml;
+    }
+
+    // 除外対象ノード（script, style など）であるかどうかの判定
+    private static bool IsIgnored(HtmlNode node)
+    {
+        return node.NodeType == HtmlNodeType.Element && IgnoredTags.Contains(node.Name);
+    }
+
+    /// <summary>
+    /// ファイルを入力として読み込み、抽出後の HTML をファイル出力する。
+    /// </summary>
+    public static void ExtractSectionToFileRegex(
+        string inputPath,
+        string outputPath,
+        string startPattern,
+        string endPattern,
+        string containerXPath,
+        RegexOptions regexOptions,
+        Encoding encoding)
+    {
+        if (!File.Exists(inputPath))
+            throw new FileNotFoundException("入力ファイルが存在しません。", inputPath);
+
+        // HTML 読み込み
+        string html = File.ReadAllText(inputPath, encoding);
+
+        // セクション抽出処理を実行
+        string result = ExtractSectionKeepingLayoutRegex(html, startPattern, endPattern, containerXPath, regexOptions, encoding);
+
+        // 結果を出力ファイルに保存
+        File.WriteAllText(outputPath, result, encoding);
+    }
+}
+
+/// <summary>
+/// コマンドラインエントリポイント
+/// 引数: 入力HTML 出力HTML 開始パターン 終了パターン 差し替えXPath（任意）
+/// </summary>
+internal static class Program
+{
+    private static void Main(string[] args)
+    {
+        if (args.Length < 4)
+        {
+            Console.Error.WriteLine("Usage: extractor <input.html> <output.html> <startRegex> <endRegex> [containerXPath]");
+            Environment.Exit(1);
+        }
+
+        string input = args[0];
+        string output = args[1];
+        string startPattern = args[2];
+        string endPattern = args[3];
+        string containerXPath = args.Length >= 5 ? args[4] : "//body";
+
+        try
+        {
+            HtmlSectionExtractor.ExtractSectionToFileRegex(
+                input,
+                output,
+                startPattern,
+                endPattern,
+                containerXPath,
+                RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                new UTF8Encoding(false));
+
+            Console.WriteLine("✅ 抽出完了 → " + output);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine("❌ エラー: " + ex.Message);
+            Environment.Exit(2);
+        }
+    }
+}
+
+} // ----------------------------------------------------------------------------- // ビルド例 (.NET Framework 4.7.2+) // - Visual Studio で .NET Framework コンソールプロジェクトを作成 // - HtmlAgilityPack を NuGet で追加 // - このファイルに差し替えて実行 // -----------------------------------------------------------------------------
+
