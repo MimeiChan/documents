@@ -1,0 +1,245 @@
+以下では .NET 9 ＋ Windows Forms ＋ BlazorWebView で「本番運用も想定した To-Do 管理アプリ」を一気通貫で構築します。まず要件を洗い出してアーキテクチャを決定し、そのうえでプロジェクト作成から主要ソースコードまで示します。公式ドキュメントに準拠しつつ、運用・保守で問題になりやすい点を先回りして設計に反映します。
+
+
+---
+
+1. 要件整理と設計方針
+
+1-1 必須機能（MVP）
+
+1-2 将来拡張を見据えた非機能要件
+
+DI とサービス分離 ― ITodoRepository を抽象化し、将来 DB/クラウド同期へ差し替え可 
+
+単一ソース・マルチ UI ― 同じ Razor コンポーネントを Web/Mobile に横展開可能 
+
+パッケージ選定 ― .NET 9 用の Microsoft.AspNetCore.Components.WebView.WindowsForms 9.x preview パッケージを利用 
+
+
+
+---
+
+2. プロジェクト構成
+
+TodoHybrid.sln
+ └─ TodoHybrid.WinForms          （Windows Forms 本体）
+     ├─ TodoHybrid.WinForms.csproj
+     ├─ Program.cs               （エントリ／DI 構築）
+     ├─ MainForm.cs              （BlazorWebView ホスト）
+     ├─ Services\
+     │   ├─ ITodoRepository.cs
+     │   └─ FileTodoRepository.cs
+     ├─ wwwroot\
+     │   └─ index.html
+     ├─ _Imports.razor
+     ├─ App.razor
+     └─ Pages\
+         └─ Todo.razor
+
+> SDK を Microsoft.NET.Sdk.Razor に変更し、TargetFramework を net9.0-windows に設定 
+
+
+
+NuGet で次の 3 つを追加します。
+
+<PackageReference Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" Version="9.*-preview" />
+<PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2151.40" />
+<PackageReference Include="System.Text.Json" Version="9.*" />
+
+
+---
+
+3. 実装ステップ
+
+3-1 Visual Studio 2022/2025 のセットアップ
+
+.NET 9 SDK 9.0.200 以降をインストール 
+
+「Windows Forms App」テンプレートでプロジェクト作成後、NuGet 追加と SDK 切替を実施 
+
+
+3-2 MainForm と DI
+
+// MainForm.cs
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Components.WebView.WindowsForms;
+using TodoHybrid.WinForms.Services;  // DI 対象
+
+public partial class MainForm : Form
+{
+    public MainForm()
+    {
+        InitializeComponent();
+
+        var services = new ServiceCollection();
+        services.AddWindowsFormsBlazorWebView();        // WebView2 利用 6
+        services.AddSingleton<ITodoRepository, FileTodoRepository>();
+        var provider = services.BuildServiceProvider();
+
+        var blazor = new BlazorWebView
+        {
+            Dock      = DockStyle.Fill,
+            HostPage  = "wwwroot\\index.html",
+            Services  = provider
+        };
+        blazor.RootComponents.Add<App>("#app");         // ルート Razor 7
+        Controls.Add(blazor);
+    }
+}
+
+3-3 永続化サービス
+
+// Services/FileTodoRepository.cs
+public sealed class FileTodoRepository : ITodoRepository
+{
+    private readonly string _file = 
+        Path.Combine(Environment.GetFolderPath(
+            Environment.SpecialFolder.ApplicationData),
+            "TodoHybrid", "todos.json");
+
+    private readonly List<TodoItem> _cache = [];
+
+    public FileTodoRepository()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(_file)!);
+        if (File.Exists(_file))
+            _cache = JsonSerializer.Deserialize<List<TodoItem>>(
+                         File.ReadAllText(_file)) ?? [];
+    }
+
+    public IEnumerable<TodoItem> GetAll() => _cache;
+
+    public void Save(TodoItem item)
+    {
+        if (!_cache.Contains(item)) _cache.Add(item);
+        Persist();
+    }
+
+    public void Delete(Guid id)
+    {
+        _cache.RemoveAll(t => t.Id == id);
+        Persist();
+    }
+
+    private void Persist() =>
+        File.WriteAllText(_file,
+            JsonSerializer.Serialize(_cache, 
+                new JsonSerializerOptions { WriteIndented = true }));
+}
+
+3-4 Razor UI
+
+<!-- Pages/Todo.razor -->
+@inject ITodoRepository Repo
+@page "/todo"
+
+<PageTitle>TODO</PageTitle>
+
+<h3 class="mb-3">タスク一覧</h3>
+
+<input @bind="newText" placeholder="新しいタスク..." class="form-control mb-2" />
+<button class="btn btn-primary" @onclick="Add">追加</button>
+
+<select class="form-select mt-3" @bind="filter">
+    <option value="All">すべて</option>
+    <option value="Active">未完了</option>
+    <option value="Done">完了</option>
+</select>
+
+<ul class="list-group mt-3">
+@foreach (var t in Filtered)
+{
+    <li class="list-group-item d-flex justify-content-between">
+        <span class="@GetCss(t)">@t.Text (@t.Due:yyyy/MM/dd)</span>
+        <span>
+            <button class="btn btn-sm btn-success me-1" @onclick="() => Toggle(t)">✓</button>
+            <button class="btn btn-sm btn-danger" @onclick="() => Delete(t.Id)">🗑</button>
+        </span>
+    </li>
+}
+</ul>
+
+@code {
+    string newText = "";
+    string filter = "All";
+
+    IEnumerable<TodoItem> Filtered =>
+        filter switch
+        {
+            "Active" => Repo.GetAll().Where(t => !t.Completed),
+            "Done"   => Repo.GetAll().Where(t =>  t.Completed),
+            _        => Repo.GetAll()
+        };
+
+    void Add()
+    {
+        if (string.IsNullOrWhiteSpace(newText)) return;
+        Repo.Save(new TodoItem(newText) { Due = DateTimeOffset.Now.AddDays(1) });
+        newText = "";
+    }
+
+    void Toggle(TodoItem t) { t.Completed = !t.Completed; Repo.Save(t); }
+    void Delete(Guid id)    => Repo.Delete(id);
+    string GetCss(TodoItem t) => t.Completed ? "text-decoration-line-through" : "";
+}
+
+> フィルタやトグルなどの典型的 Todo 機能は、Blazor Server/Telerik の例と同等 
+
+
+
+
+---
+
+4. 深掘りポイント
+
+4-1 Windows Forms ↔ Blazor 通信
+
+blazorWebView.RootComponents.Add<Todo>("selector", parameters) を使えば初期パラメータ注入が可能 
+
+双方向通信が必要なら、イベント集約パターンまたは IJSRuntime＋postMessage 相当でブリッジ可 
+
+
+4-2 UI/UX とライブラリ選定
+
+プレーン Bootstrap で軽量に始め、将来 Telerik UI や DevExpress & SmartUI などに置換しても Razor コンポーネント層は温存 
+
+WPF 版・MAUI 版への移植は BlazorWebView.Wpf/Maui パッケージ差し替えのみ 
+
+
+4-3 データストア拡張
+
+小規模ならローカル JSON で十分だが、数万件規模や多端末同期が必要になったら SQLite → EF Core → クラウド API へ段階的に移行できる設計にしている。
+
+
+
+---
+
+5. ビルド & 実行手順
+
+1. 復元: dotnet restore
+
+
+2. ビルド: dotnet build -c Release
+
+
+3. 起動: dotnet run --project TodoHybrid.WinForms - or - Visual Studio ▶︎ 実行
+
+初回のみ WebView2 ランタイムの自動インストールが走る場合あり 
+
+
+
+
+
+---
+
+6. まとめ
+
+BlazorWebView でネイティブ WinForms と Web 技術を統合し、C# のみでフロントエンドを記述。
+
+.NET 9 preview の最新 API を利用して DI・ルーティング・パラメータ受け渡しを簡潔化。
+
+レイヤ分離 と DI により、JSON → DB → クラウドへスムーズに発展可能な設計。
+
+
+このスケルトンをベースに、認証（Azure AD など）や通知トースト、ドラッグ＆ドロップ並べ替えなどを追加すれば業務レベルのタスク管理ソリューションへ拡張できます。疑問点や追加機能のご要望があればお知らせください。
+
