@@ -1,0 +1,129 @@
+using System; using System.IO; using System.Text.RegularExpressions; using HtmlAgilityPack;
+
+namespace HtmlSectionExtractorTool { /// <summary> /// HTML セクション抽出ツール /// </summary> class Program { /// <summary> /// アプリケーションのエントリポイント /// </summary> /// <param name="args"> /// コマンドライン引数: ///  args[0] = 入力 HTML ファイルパス ///  args[1] = 出力 HTML ファイルパス ///  args[2] = 開始見出しテキストの正規表現 ///  args[3] = 終了見出しテキストの正規表現 ///  （任意）args[4] = 差し替え対象の XPath（デフォルト: /html/body） /// </param> static void Main(string[] args) { if (args.Length < 4) { Console.WriteLine("使い方: HtmlSectionExtractorTool.exe <入力HTML> <出力HTML> <開始見出しRegex> <終了見出しRegex> [差し替えXPath]"); return; }
+
+var inputPath = args[0];
+        var outputPath = args[1];
+        var startPattern = args[2];
+        var endPattern = args[3];
+        var targetXPath = args.Length >= 5 ? args[4] : "/html/body";
+
+        // HTMLロード
+        var htmlDoc = new HtmlDocument();
+        htmlDoc.OptionAutoCloseOnEnd = true;
+        htmlDoc.OptionFixNestedTags = true;
+        htmlDoc.Load(inputPath);
+
+        // セクション抽出
+        var extractor = new SectionExtractor(htmlDoc);
+        var sectionFragment = extractor.ExtractSectionFragment(startPattern, endPattern);
+
+        if (sectionFragment != null)
+        {
+            // 指定領域の置き換え
+            var targetNode = htmlDoc.DocumentNode.SelectSingleNode(targetXPath);
+            if (targetNode != null)
+            {
+                // 既存子ノード削除
+                targetNode.RemoveAllChildren();
+                // 抽出断片を移植
+                foreach (var child in sectionFragment.ChildNodes)
+                {
+                    targetNode.AppendChild(child);
+                }
+            }
+            else
+            {
+                Console.WriteLine($"XPath '{targetXPath}' に該当する要素が見つかりませんでした。");
+            }
+
+            // 保存
+            htmlDoc.Save(outputPath);
+            Console.WriteLine($"抽出完了。出力パス: {outputPath}");
+        }
+        else
+        {
+            Console.WriteLine("指定した見出し範囲のセクションが見つかりませんでした。");
+        }
+    }
+}
+
+/// <summary>
+/// HTML ドキュメントから見出し範囲を抽出するクラス
+/// </summary>
+public class SectionExtractor
+{
+    private readonly HtmlDocument _document;
+
+    /// <summary>
+    /// コンストラクタ
+    /// </summary>
+    /// <param name="document">解析対象の HtmlDocument インスタンス</param>
+    public SectionExtractor(HtmlDocument document)
+    {
+        _document = document;
+    }
+
+    /// <summary>
+    /// 開始・終了見出しパターンで囲まれたセクションの断片を取得
+    /// </summary>
+    /// <param name="startRegex">開始見出しテキストの正規表現</param>
+    /// <param name="endRegex">終了見出しテキストの正規表現</param>
+    /// <returns>抽出された HtmlNode（Wrapper&lt;div&gt;）、見つからなければ null</returns>
+    public HtmlNode ExtractSectionFragment(string startRegex, string endRegex)
+    {
+        // ドキュメント全体のクローンを作成して操作
+        var cloneDoc = _document.DocumentNode.Clone();
+
+        // 見出し候補を検索: h1～h6 を含む任意のタグでテキスト比較
+        var headings = cloneDoc.SelectNodes("//h1|//h2|//h3|//h4|//h5|//h6");
+        if (headings == null)
+            return null;
+
+        var startNode = (HtmlNode)null;
+        var endNode = (HtmlNode)null;
+        var startPattern = new Regex(startRegex, RegexOptions.IgnoreCase);
+        var endPatternCompiled = new Regex(endRegex, RegexOptions.IgnoreCase);
+
+        // 開始見出しノードの検出
+        foreach (var node in headings)
+        {
+            if (startPattern.IsMatch(node.InnerText.Trim()))
+            {
+                startNode = node;
+                break;
+            }
+        }
+
+        // 終了見出しノードの検出
+        if (startNode != null)
+        {
+            foreach (var node in headings)
+            {
+                if (node.StreamPosition <= startNode.StreamPosition)
+                    continue; // 開始以降のノードを検出対象に
+
+                if (endPatternCompiled.IsMatch(node.InnerText.Trim()))
+                {
+                    endNode = node;
+                    break;
+                }
+            }
+        }
+
+        // 抽出範囲が揃っていない場合は null
+        if (startNode == null || endNode == null)
+            return null;
+
+        // 新規 div を作成し、開始ノードから終了ノードの直前まで子要素を追加
+        var wrapper = HtmlNode.CreateNode("<div></div>");
+        for (var node = startNode; node != null && node.StreamPosition < endNode.StreamPosition; node = node.NextSibling)
+        {
+            // Node を追加
+            wrapper.AppendChild(node.Clone());
+        }
+
+        return wrapper;
+    }
+}
+
