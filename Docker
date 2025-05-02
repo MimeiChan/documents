@@ -1,0 +1,269 @@
+以下の手順は 「いま動いている Ollama コンテナはそのまま残す（バックアップとして温存）」 という条件で、
+新しい環境変数を反映した“そっくりさん”コンテナを作り直す - もっとも失敗しにくい王道パターンです。
+（Docker の仕様上、起動済みコンテナの ENV は後から書き換えられません。変更したい場合は 再作成 が必須です。）
+
+
+---
+
+0. 概念を 1 分でおさらい
+
+
+---
+
+1. 現在の設定をメモしておく（3 行コマンド）
+
+# 1) コンテナ名とポート確認
+docker ps
+
+# 2) 現在の ENV 一覧を JSON で確認・コピペ保存
+docker inspect --format '{{json .Config.Env}}' <現在のコンテナ名>
+
+# 3) 念のためスナップショット
+docker commit <現在のコンテナ名> ollama_backup:latest
+
+> docker commit で作った ollama_backup:latest は“もしもの時”にすぐ戻れる保険です。
+
+
+
+
+---
+
+2. 方法別：ENV を変えて再起動
+
+2-A. Docker Desktop GUI だけで完結（超初心者向け）
+
+1. Docker Desktop → Containers / Apps
+対象コンテナの右端 ⋯ → Duplicate / Edit をクリック
+
+
+2. Environment variables タブで追記・修正
+
+例：OLLAMA_MAX_LOADED_MODELS=4、OLLAMA_MODELS=/models
+公式で使われる代表的な変数 
+
+
+
+3. Volumes タブで<br>既存ボリューム（例：ollama_data）がマウントされていることを確認
+※ここがズレるとモデルが 0 から再ダウンロードになります
+
+
+4. Deploy Container → 新しい名前（例：ollama_v2）で起動
+
+
+5. 動作を確認したら旧コンテナを Stop → Remove で整理
+
+
+
+
+---
+
+2-B. CLI で “ほぼコピペ” 再起動（習熟向け）
+
+# 新しい .env ファイルを作成（VSCode やメモ帳で OK）
+echo OLLAMA_MAX_LOADED_MODELS=4              > ollama.env
+echo OLLAMA_NUM_PARALLEL=3                  >> ollama.env
+echo OLLAMA_MODELS=C:\ollama\models         >> ollama.env   # Windows パス例
+
+# 既存ボリュームを使い回して起動
+docker run -d ^
+  --name ollama_v2 ^
+  --env-file ollama.env ^
+  -p 11434:11434 ^
+  -v ollama_data:/root/.ollama ^
+  --restart unless-stopped ^
+  ollama/ollama:latest
+
+> ポートやボリューム名は docker ps と docker volume ls で現物を確認して合わせてください。
+
+
+
+
+---
+
+2-C. docker-compose を導入して「次からは YAML 1 行編集で済ます」
+
+1. 作業用フォルダーに docker-compose.yml を新規作成：
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_MAX_LOADED_MODELS=4      # ここに追記するだけで次回反映
+      - OLLAMA_NUM_PARALLEL=3
+      - OLLAMA_MODELS=/root/.ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+
+Compose ファイル例。ENV は何度でも書き換え→docker compose up -d で反映 
+
+
+2. 既存のボリュームを指定しているため、モデルと設定がそのまま引き継がれます
+
+
+3. 以降は ENV を変えたら docker compose up -d だけ。履歴も YAML で残るので管理がラク。
+
+
+
+
+---
+
+3. 動作確認チェックリスト
+
+
+---
+
+4. 代表的な Ollama 用 ENV 早見表
+
+
+---
+
+ワンポイント
+
+docker update では ENV を変えられない ― リソース制限系だけ。
+
+ボリュームを必ず流用：ENV を変える ⇒ モデルを再 DL という“事故”を防ぐ。
+
+GUI 派 → Duplicate/Edit、CLI 派 → run --env-file、運用派 → compose と覚えると迷いません。
+
+
+これで 「既存コンテナは残しつつ、ENV を変えた最新版を安全に立ち上げる」 作業は完了です。
+不明点があればお気軽にどうぞ！
+
+
+
+
+結論だけ先に
+
+すでに -v ollama_data:/root/.ollama や C:\ollama\models:/root/.ollama のように ボリューム／ホストフォルダーをマウントしていれば再ダウンロードは不要。
+同じマウント指定で “そっくりさん” を起動すれば、モデルファイルはそのまま使えます。
+
+マウントしていなかった場合（Mounts が空のまま run していた場合）は、旧コンテナの中にしかモデルが無いので、
+
+1. コンテナを commit してイメージ化する  2) あるいは .ollama ディレクトリを新しいボリュームへコピーしておく —— のどちらかを行わないと再取得になります。
+
+
+
+
+
+---
+
+1 . まず「モデルの置き場所」を確認する
+
+docker inspect --format '{{json .Mounts}}' <旧コンテナ名> | jq   # jq が無ければそのままでも OK
+
+Type":"volume" や Type":"bind" で Destination":"/root/.ollama" が出ていれば ✔️（外部に出ている）
+
+何も出てこない／Mounts: [] なら ×（コンテナ内部に閉じ込めたまま）
+
+
+
+---
+
+2 A. ボリューム／ホストフォルダーがある場合（再 DL 不要）
+
+新コンテナを起動するときに 同じマウント を指定するだけで完了です。
+
+GUI（Docker Desktop “Duplicate / Edit”）
+
+1. ⋯ → Duplicate / Edit
+
+
+2. Volumes タブで既存の ollama_data（例）を確認
+
+
+3. 「Deploy Container」で起動
+
+
+
+CLI
+
+docker run -d ^
+  --name ollama_v2 ^
+  --env-file ollama.env ^
+  -p 11434:11434 ^
+  -v ollama_data:/root/.ollama ^   # ← ここを同じにする
+  --restart unless-stopped ^
+  ollama/ollama:latest
+
+docker-compose
+
+volumes:
+  ollama_data:           # 既存名をそのまま書く
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_MAX_LOADED_MODELS=4
+    volumes:
+      - ollama_data:/root/.ollama   # ← 同じ
+    restart: unless-stopped
+
+> モデルはボリューム内にあるので、新コンテナ側からは 即利用 できます。
+
+
+
+
+---
+
+2 B. マウントしていなかった場合（再 DL を回避したい）
+
+① 手っ取り早く：docker commit で丸ごと凍結
+
+docker commit <旧コンテナ名> ollama_with_models:latest
+docker run -d --name ollama_v2 --env-file ollama.env -p 11434:11434 ollama_with_models:latest
+
+モデル込みの巨大イメージができますが、更新のたびに commit が必要になるデメリットあり。
+
+
+② 長期運用向け：データを「名前付きボリューム」に移行
+
+1. ボリューム作成
+
+docker volume create ollama_models
+
+
+2. 一時コンテナでコピー
+
+docker run --rm --volumes-from <旧コンテナ名> -v ollama_models:/dest alpine \
+  sh -c "cp -a /root/.ollama/. /dest/"
+
+
+3. 新コンテナをボリューム付きで起動
+
+docker run -d --name ollama_v2 --env-file ollama.env -p 11434:11434 \
+  -v ollama_models:/root/.ollama ollama/ollama:latest
+
+
+
+> 以後は どのバージョンのコンテナでも同じボリュームを共有でき、モデル再取得は不要になります。
+
+
+
+
+---
+
+3 . “ちゃんと使い回せた？” チェックリスト
+
+
+---
+
+よくある質問
+
+
+---
+
+これで 「そっくりさんを作り直してもモデルを再ダウンロードせずに済むか？」 が判別・対処できます。
+もし操作中に不明点があれば遠慮なくどうぞ！
+
+
