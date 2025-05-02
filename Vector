@@ -1,0 +1,160 @@
+初心者でも迷わず進められるよう、手順を極力シンプルにまとめました。
+ベクトルストアは専用DB（ここでは Qdrant を例に）を使う前提です。
+
+
+---
+
+前提条件
+
+1. .NET 7+ SDK がインストール済み
+
+
+2. Qdrant を Docker で簡単に立ち上げられる環境（Windows, macOS, Linux）
+
+
+3. QAデータが入った SQL Server テーブル
+
+CREATE TABLE QA_Master (
+  QA_ID    INT PRIMARY KEY,
+  Business NVARCHAR(100),
+  Question NVARCHAR(MAX),
+  Answer   NVARCHAR(MAX)
+);
+
+
+
+
+---
+
+ステップ 1. Qdrant を起動する
+
+Docker が使えるなら、ターミナルで以下１行を実行するだけ。
+
+docker run -p 6333:6333 -d qdrant/qdrant
+
+6333 ポートが Qdrant の API サーバーになります。
+
+
+
+---
+
+ステップ 2. .NET プロジェクトを作成／パッケージ追加
+
+dotnet new console -n QaRagDemo
+cd QaRagDemo
+dotnet add package Qdrant.Client       # Qdrant とやり取りする公式クライアント
+dotnet add package HuggingFace.Hub     # 埋め込み生成用（Hugging Face .NET SDK）
+
+
+---
+
+ステップ 3. 埋め込み（Embedding）を生成し、Qdrant に投入
+
+using Qdrant.Client;
+using HuggingFace.Hub.Embeddings;
+using System.Data.SqlClient;
+
+// 1) Qdrant クライアント初期化
+var qdrant = new QdrantClient("http://localhost:6333");
+
+// 2) 埋め込みモデル初期化（例：sentence-transformers）
+var embedder = new EmbeddingClient("sentence-transformers/all-MiniLM-L6-v2");
+
+// 3) SQL Server から QA を読み取り、埋め込み→Qdrant へ upsert
+using var conn = new SqlConnection("Server=.;Database=YourDb;Trusted_Connection=true;");
+await conn.OpenAsync();
+
+var cmd = new SqlCommand("SELECT QA_ID, Question FROM QA_Master", conn);
+using var reader = await cmd.ExecuteReaderAsync();
+while (await reader.ReadAsync())
+{
+    int id = reader.GetInt32(0);
+    string question = reader.GetString(1);
+
+    // 埋め込み生成
+    float[] vector = await embedder.GetEmbeddingAsync(question);
+
+    // Qdrant に upsert
+    await qdrant.UpsertAsync(
+        collectionName: "qa_collection",
+        new[] {
+            new PointStruct<float[]>
+            {
+                Id = id,
+                Vector = vector,
+                Payload = new Dictionary<string, object>
+                {
+                    ["Business"] = /* ビジネス名もあれば載せる */,
+                }
+            }
+        }
+    );
+}
+
+> ポイント
+
+最初に一度だけ全件を登録すれば OK
+
+新規データ追加時は同じコードで再度 upsert するだけ
+
+
+
+
+
+---
+
+ステップ 4. Qdrant コレクションの準備
+
+// 起動直後に１度だけ実行
+await qdrant.CreateCollectionAsync(
+    name: "qa_collection",
+    vectorSize: 384,            // 使用モデルの埋め込み次元に合わせる
+    distance: Distance.Cosine   // コサイン類似度で検索
+);
+
+
+---
+
+ステップ 5. ユーザー質問の類似検索＆回答取得
+
+string userQuestion = "新規ユーザー登録の手順は？";
+
+// 1) クエリ埋め込み
+var queryVec = await embedder.GetEmbeddingAsync(userQuestion);
+
+// 2) Qdrant で Top1 検索（業務名フィルタを入れたい場合は Filter オプション）
+var searchResult = await qdrant.SearchAsync<float[]>(
+    collectionName: "qa_collection",
+    vector: queryVec,
+    top: 1
+);
+
+// 3) 最も類似度の高い QA_ID を取得
+int bestId = (int)searchResult.First().Id;
+
+// 4) SQL Server から回答を取得
+var cmd2 = new SqlCommand("SELECT Answer FROM QA_Master WHERE QA_ID = @id", conn);
+cmd2.Parameters.AddWithValue("@id", bestId);
+string answer = (string)await cmd2.ExecuteScalarAsync();
+
+Console.WriteLine($"【候補QA_ID】{bestId}");
+Console.WriteLine($"【回答】{answer}");
+
+
+---
+
+ステップ 6. 運用ポイント
+
+新しい QA を追加したら ステップ3 のコードを再実行
+
+top を 1 → 3 にすると複数候補を返せる
+
+類似度（Score）が低い場合は人手確認フローに回す
+
+
+
+---
+
+以上で、初心者でも 5つのファイル＋十数行のコード で「SQL Server＋Qdrant によるベクトル検索RAG」が構築できます。
+まずはこの流れで PoC を回してみてください！
+
