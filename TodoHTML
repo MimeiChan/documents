@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高機能モダンTODOアプリ</title>
+    <style>
+        /* Reset and Base Styles */
+        :root {
+            --primary-color: #6d5dfc;
+            --secondary-color: #ff6b6b;
+            --accent-color: #ffc107; /* 期日警告などに使用 */
+            --background-color: #f4f7f6;
+            --text-color: #333;
+            --card-background: #ffffff;
+            --border-color: #e0e0e0;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --font-family: 'Arial', 'Helvetica Neue', Helvetica, sans-serif;
+            --border-radius: 12px;
+            --transition-speed: 0.3s;
+
+            --priority-high-color: #dc3545; /* 赤系 */
+            --priority-medium-color: #ffc107; /* 黄系 */
+            --priority-low-color: #28a745;  /* 緑系 */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+            font-size: 16px;
+        }
+
+        .container {
+            background-color: var(--card-background);
+            padding: 25px 30px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 30px var(--shadow-color);
+            width: 100%;
+            max-width: 700px; /* 少し幅を広げる */
+            margin-top: 40px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2.2em;
+            font-weight: bold;
+        }
+
+        /* Controls Area: Add button, Search, Sort */
+        .controls-area {
+            display: flex;
+            flex-wrap: wrap; /* 小画面で折り返し */
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+
+        .add-task-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color var(--transition-speed), transform var(--transition-speed);
+        }
+        .add-task-button:hover {
+            background-color: #5847d8;
+            transform: translateY(-2px);
+        }
+
+        .search-sort-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search-input, .sort-select {
+            padding: 10px 12px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 0.9em;
+            outline: none;
+        }
+        .search-input:focus, .sort-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(109, 93, 252, 0.2);
+        }
+        .search-input {
+            min-width: 180px;
+        }
+
+        /* Filter Buttons (既存) */
+        .filter-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .filter-button {
+            background-color: transparent;
+            color: var(--primary-color);
+            border: 2px solid var(--primary-color);
+            padding: 8px 15px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background-color var(--transition-speed), color var(--transition-speed);
+        }
+        .filter-button.active, .filter-button:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        /* Todo List */
+        .todo-list {
+            list-style-type: none;
+            padding: 0;
+            max-height: 50vh; /* リストが多くなった場合スクロール */
+            overflow-y: auto;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            background-color: var(--card-background);
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            margin-bottom: 10px;
+            transition: background-color var(--transition-speed), opacity var(--transition-speed), transform var(--transition-speed);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .todo-item.completed .todo-main-info .todo-text {
+            text-decoration: line-through;
+            color: #aaa;
+        }
+        .todo-item.completed {
+            background-color: #f9f9f9;
+            opacity: 0.8;
+        }
+        
+        .todo-item .priority-indicator {
+            width: 8px;
+            height: 30px;
+            border-radius: 4px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        .priority-high { background-color: var(--priority-high-color); }
+        .priority-medium { background-color: var(--priority-medium-color); }
+        .priority-low { background-color: var(--priority-low-color); }
+
+        .todo-main-info {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-right: 10px;
+            overflow: hidden; /* テキストがはみ出ないように */
+        }
+        .todo-text {
+            font-size: 1em;
+            font-weight: 500;
+            cursor: pointer; /* テキストクリックで完了 */
+            word-break: break-word;
+        }
+        .todo-due-date {
+            font-size: 0.8em;
+            color: #777;
+        }
+        .todo-due-date.overdue {
+            color: var(--secondary-color);
+            font-weight: bold;
+        }
+
+        .todo-actions {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .todo-actions button {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 1.3em; /* アイコンサイズ */
+            padding: 6px;
+            margin-left: 5px;
+            transition: color var(--transition-speed), transform var(--transition-speed);
+            line-height: 1; /* アイコンの縦位置調整 */
+        }
+        .complete-button { color: #28a745; }
+        .todo-item.completed .complete-button { color: #ffc107; }
+        .edit-button { color: var(--primary-color); }
+        .delete-button { color: var(--secondary-color); }
+
+        .complete-button:hover { color: #1e7e34; transform: scale(1.1); }
+        .todo-item.completed .complete-button:hover { color: #d39e00; transform: scale(1.1); }
+        .edit-button:hover { color: #5847d8; transform: scale(1.1); }
+        .delete-button:hover { color: #c82333; transform: scale(1.1); }
+
+        /* アイコン (テキスト絵文字) */
+        .complete-button::before { content: '✓'; }
+        .todo-item.completed .complete-button::before { content: '↩'; }
+        .edit-button::before { content: '✏️'; }
+        .delete-button::before { content: '🗑️'; }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            color: #777;
+            padding: 25px;
+            font-style: italic;
+        }
+
+        /* Modal */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5); /* Dim background */
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background-color: var(--card-background);
+            margin: auto;
+            padding: 25px 30px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 500px;
+            position: relative; /* For close button */
+            animation: modalOpen 0.3s ease-out;
+        }
+        @keyframes modalOpen {
+            from { opacity: 0; transform: translateY(-30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .modal-title {
+            font-size: 1.5em;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        .close-button {
+            color: #aaa;
+            font-size: 2em;
+            font-weight: bold;
+            cursor: pointer;
+            background: none;
+            border: none;
+            line-height: 1;
+        }
+        .close-button:hover, .close-button:focus {
+            color: var(--text-color);
+            text-decoration: none;
+        }
+
+        .modal-body .form-group {
+            margin-bottom: 18px;
+        }
+        .modal-body label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+        .modal-body input[type="text"],
+        .modal-body input[type="date"],
+        .modal-body select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 1em;
+            outline: none;
+            transition: border-color var(--transition-speed);
+        }
+        .modal-body input[type="text"]:focus,
+        .modal-body input[type="date"]:focus,
+        .modal-body select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(109, 93, 252, 0.2);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+        .modal-button {
+            padding: 10px 20px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color var(--transition-speed), transform var(--transition-speed);
+            border: none;
+        }
+        .save-button {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .save-button:hover {
+            background-color: #5847d8;
+            transform: translateY(-1px);
+        }
+        .cancel-button {
+            background-color: #f0f0f0;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+        .cancel-button:hover {
+            background-color: #e0e0e0;
+        }
+
+        /* Animation for adding/removing items */
+        .todo-item.entering {
+            opacity: 0;
+            transform: translateY(-10px);
+            animation: itemEnter 0.3s ease-out forwards;
+        }
+        .todo-item.exiting {
+            opacity: 1;
+            transform: scale(1);
+            animation: itemExit 0.3s ease-in forwards;
+        }
+        @keyframes itemEnter {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes itemExit {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.9); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { padding: 20px; margin-top: 20px; }
+            h1 { font-size: 1.8em; }
+            .controls-area { flex-direction: column; align-items: stretch; }
+            .add-task-button { width: 100%; margin-bottom: 10px; }
+            .search-sort-controls { width: 100%; justify-content: space-between; }
+            .search-input { flex-grow: 1; }
+            .sort-select { min-width: 150px; }
+            .filter-buttons { flex-wrap: wrap; }
+            .filter-button { flex-grow: 1; margin-bottom: 5px; }
+            .todo-item { padding: 10px; }
+            .todo-text { font-size: 0.95em; }
+            .todo-due-date { font-size: 0.75em; }
+            .todo-actions button { font-size: 1.2em; padding: 5px; }
+            .modal-content { padding: 20px; }
+            .modal-title { font-size: 1.3em; }
+        }
+        @media (max-width: 480px) {
+            .search-sort-controls { flex-direction: column; gap: 10px; }
+            .search-input, .sort-select { width: 100%; }
+            .modal-footer { flex-direction: column; }
+            .modal-button { width: 100%; }
+            .modal-button + .modal-button { margin-top: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🚀 My Advanced ToDo 🚀</h1>
+
+        <div class="controls-area">
+            <button class="add-task-button" id="openModalButton">新しいタスクを追加</button>
+            <div class="search-sort-controls">
+                <input type="text" class="search-input" id="searchInput" placeholder="タスクを検索...">
+                <select class="sort-select" id="sortSelect">
+                    <option value="date-desc">作成日 (新しい順)</option>
+                    <option value="date-asc">作成日 (古い順)</option>
+                    <option value="due-date-asc">期日 (近い順)</option>
+                    <option value="due-date-desc">期日 (遠い順)</option>
+                    <option value="priority-desc">優先度 (高→低)</option>
+                    <option value="priority-asc">優先度 (低→高)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="filter-buttons">
+            <button class="filter-button active" data-filter="all">すべて</button>
+            <button class="filter-button" data-filter="active">アクティブ</button>
+            <button class="filter-button" data-filter="completed">完了済み</button>
+        </div>
+
+        <ul class="todo-list" id="todoList">
+            </ul>
+        <p class="empty-state" id="emptyState">タスクはありません。最初のタスクを追加しましょう！</p>
+    </div>
+
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">新しいタスク</h2>
+                <button class="close-button" id="closeModalButton">&times;</button>
+            </div>
+            <form id="taskForm">
+                <div class="modal-body">
+                    <input type="hidden" id="taskId">
+                    <div class="form-group">
+                        <label for="taskText">タスク内容:</label>
+                        <input type="text" id="taskText" required placeholder="例: プロジェクトの計画を立てる">
+                    </div>
+                    <div class="form-group">
+                        <label for="taskPriority">優先度:</label>
+                        <select id="taskPriority">
+                            <option value="medium">中</option>
+                            <option value="high">高</option>
+                            <option value="low">低</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskDueDate">期日:</label>
+                        <input type="date" id="taskDueDate">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="modal-button cancel-button" id="cancelModalButton">キャンセル</button>
+                    <button type="submit" class="modal-button save-button">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const openModalButton = document.getElementById('openModalButton');
+            const taskModal = document.getElementById('taskModal');
+            const closeModalButton = document.getElementById('closeModalButton');
+            const cancelModalButton = document.getElementById('cancelModalButton');
+            const taskForm = document.getElementById('taskForm');
+            const modalTitle = document.getElementById('modalTitle');
+            const taskIdInput = document.getElementById('taskId');
+            const taskTextInput = document.getElementById('taskText');
+            const taskPriorityInput = document.getElementById('taskPriority');
+            const taskDueDateInput = document.getElementById('taskDueDate');
+            const todoList = document.getElementById('todoList');
+            const emptyState = document.getElementById('emptyState');
+            const filterButtons = document.querySelectorAll('.filter-button');
+            const searchInput = document.getElementById('searchInput');
+            const sortSelect = document.getElementById('sortSelect');
+
+            // App State
+            let todos = JSON.parse(localStorage.getItem('todos_v2')) || []; // Use a new key for v2
+            let currentFilter = 'all';
+            let currentSort = 'date-desc';
+            let currentSearchTerm = '';
+            let editingTodoId = null;
+
+            // --- Utility Functions ---
+            const saveTodos = () => {
+                localStorage.setItem('todos_v2', JSON.stringify(todos));
+            };
+
+            const getPriorityClass = (priority) => {
+                if (priority === 'high') return 'priority-high';
+                if (priority === 'medium') return 'priority-medium';
+                if (priority === 'low') return 'priority-low';
+                return '';
+            };
+
+            const formatDate = (dateString) => {
+                if (!dateString) return '期日なし';
+                const date = new Date(dateString);
+                 // タイムゾーンオフセットを考慮して日付を調整
+                const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+                const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+                return adjustedDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' });
+            };
+            
+            const isOverdue = (dateString) => {
+                if (!dateString) return false;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // 今日の始まり
+                const dueDate = new Date(dateString);
+                // タイムゾーンオフセットを考慮
+                const userTimezoneOffset = dueDate.getTimezoneOffset() * 60000;
+                const adjustedDueDate = new Date(dueDate.getTime() + userTimezoneOffset);
+                adjustedDueDate.setHours(0,0,0,0);
+
+                return adjustedDueDate < today;
+            };
+
+
+            // --- Modal Handling ---
+            const openTaskModal = (todo = null) => {
+                editingTodoId = todo ? todo.id : null;
+                modalTitle.textContent = todo ? 'タスクを編集' : '新しいタスク';
+                taskTextInput.value = todo ? todo.text : '';
+                taskPriorityInput.value = todo ? todo.priority : 'medium';
+                taskDueDateInput.value = todo ? todo.dueDate : '';
+                taskIdInput.value = todo ? todo.id : ''; // Hidden input
+                taskModal.classList.add('show');
+                taskTextInput.focus();
+            };
+
+            const closeTaskModal = () => {
+                taskModal.classList.remove('show');
+                taskForm.reset(); // フォームをリセット
+                editingTodoId = null;
+            };
+
+            openModalButton.addEventListener('click', () => openTaskModal());
+            closeModalButton.addEventListener('click', closeTaskModal);
+            cancelModalButton.addEventListener('click', closeTaskModal);
+            window.addEventListener('click', (event) => { // Close modal if clicked outside
+                if (event.target === taskModal) {
+                    closeTaskModal();
+                }
+            });
+            window.addEventListener('keydown', (event) => { // Close modal with Escape key
+                if (event.key === 'Escape' && taskModal.classList.contains('show')) {
+                    closeTaskModal();
+                }
+            });
+
+
+            // --- Core Todo Logic ---
+            const renderTodos = () => {
+                todoList.innerHTML = ''; // Clear current list
+
+                // 1. Filter by search term
+                let processedTodos = todos.filter(todo => 
+                    todo.text.toLowerCase().includes(currentSearchTerm.toLowerCase())
+                );
+
+                // 2. Filter by active/completed status
+                if (currentFilter === 'active') {
+                    processedTodos = processedTodos.filter(todo => !todo.completed);
+                } else if (currentFilter === 'completed') {
+                    processedTodos = processedTodos.filter(todo => todo.completed);
+                }
+
+                // 3. Sort
+                processedTodos.sort((a, b) => {
+                    switch (currentSort) {
+                        case 'date-desc': return b.id - a.id; // id is timestamp
+                        case 'date-asc': return a.id - b.id;
+                        case 'due-date-asc':
+                            if (!a.dueDate) return 1; if (!b.dueDate) return -1;
+                            return new Date(a.dueDate) - new Date(b.dueDate);
+                        case 'due-date-desc':
+                            if (!a.dueDate) return 1; if (!b.dueDate) return -1;
+                            return new Date(b.dueDate) - new Date(a.dueDate);
+                        case 'priority-desc':
+                            const priorityOrder = { high: 3, medium: 2, low: 1 };
+                            return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+                        case 'priority-asc':
+                            const priorityOrderAsc = { low: 1, medium: 2, high: 3 };
+                            return (priorityOrderAsc[a.priority] || 0) - (priorityOrderAsc[b.priority] || 0);
+                        default: return 0;
+                    }
+                });
+                
+                emptyState.style.display = processedTodos.length === 0 ? 'block' : 'none';
+                if (processedTodos.length === 0) {
+                    if (todos.length > 0 || currentSearchTerm) {
+                         emptyState.textContent = '該当するタスクはありません。';
+                    } else {
+                         emptyState.textContent = 'タスクはありません。最初のタスクを追加しましょう！';
+                    }
+                }
+
+
+                processedTodos.forEach(todo => {
+                    const todoItem = document.createElement('li');
+                    todoItem.classList.add('todo-item');
+                    if (todo.completed) todoItem.classList.add('completed');
+                    todoItem.dataset.id = todo.id;
+
+                    // Animation class
+                    if (todo.justAdded) {
+                        todoItem.classList.add('entering');
+                        setTimeout(() => {
+                            todoItem.classList.remove('entering');
+                            delete todo.justAdded;
+                        }, 300);
+                    }
+                    
+                    // Priority Indicator
+                    const priorityIndicator = document.createElement('div');
+                    priorityIndicator.classList.add('priority-indicator', getPriorityClass(todo.priority));
+                    
+                    // Main Info (Text and Due Date)
+                    const mainInfo = document.createElement('div');
+                    mainInfo.classList.add('todo-main-info');
+
+                    const todoText = document.createElement('span');
+                    todoText.classList.add('todo-text');
+                    todoText.textContent = todo.text;
+                    todoText.addEventListener('click', () => toggleComplete(todo.id));
+
+                    const todoDueDate = document.createElement('span');
+                    todoDueDate.classList.add('todo-due-date');
+                    todoDueDate.textContent = formatDate(todo.dueDate);
+                    if (todo.dueDate && isOverdue(todo.dueDate) && !todo.completed) {
+                        todoDueDate.classList.add('overdue');
+                        todoDueDate.textContent += ' (期限切れ)';
+                    }
+                    
+                    mainInfo.appendChild(todoText);
+                    mainInfo.appendChild(todoDueDate);
+
+                    // Actions (Complete, Edit, Delete)
+                    const todoActions = document.createElement('div');
+                    todoActions.classList.add('todo-actions');
+
+                    const completeButton = document.createElement('button');
+                    completeButton.classList.add('complete-button');
+                    completeButton.setAttribute('aria-label', todo.completed ? '未完了に戻す' : '完了にする');
+                    completeButton.addEventListener('click', () => toggleComplete(todo.id));
+
+                    const editButton = document.createElement('button');
+                    editButton.classList.add('edit-button');
+                    editButton.setAttribute('aria-label', '編集');
+                    editButton.addEventListener('click', () => openTaskModal(todo));
+                    
+                    const deleteButton = document.createElement('button');
+                    deleteButton.classList.add('delete-button');
+                    deleteButton.setAttribute('aria-label', '削除');
+                    deleteButton.addEventListener('click', () => deleteTodo(todo.id));
+
+                    todoActions.appendChild(completeButton);
+                    todoActions.appendChild(editButton);
+                    todoActions.appendChild(deleteButton);
+
+                    todoItem.appendChild(priorityIndicator);
+                    todoItem.appendChild(mainInfo);
+                    todoItem.appendChild(todoActions);
+                    todoList.appendChild(todoItem);
+                });
+            };
+
+            taskForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = taskTextInput.value.trim();
+                const priority = taskPriorityInput.value;
+                const dueDate = taskDueDateInput.value;
+
+                if (!text) {
+                    alert('タスク内容を入力してください。');
+                    taskTextInput.focus();
+                    return;
+                }
+
+                if (editingTodoId) { // Editing existing task
+                    todos = todos.map(todo =>
+                        todo.id === editingTodoId ? { ...todo, text, priority, dueDate, completed: todo.completed } : todo
+                    );
+                } else { // Adding new task
+                    const newTodo = {
+                        id: Date.now(),
+                        text,
+                        priority,
+                        dueDate,
+                        completed: false,
+                        justAdded: true
+                    };
+                    todos.unshift(newTodo);
+                }
+                saveTodos();
+                renderTodos();
+                closeTaskModal();
+            });
+
+            const toggleComplete = (id) => {
+                todos = todos.map(todo =>
+                    todo.id === id ? { ...todo, completed: !todo.completed } : todo
+                );
+                saveTodos();
+                renderTodos();
+            };
+
+            const deleteTodo = (id) => {
+                if (!confirm('このタスクを本当に削除しますか？')) return;
+
+                const todoItemElement = todoList.querySelector(`.todo-item[data-id="${id}"]`);
+                if (todoItemElement) {
+                    todoItemElement.classList.add('exiting');
+                    setTimeout(() => {
+                        todos = todos.filter(todo => todo.id !== id);
+                        saveTodos();
+                        renderTodos();
+                    }, 300);
+                } else {
+                    todos = todos.filter(todo => todo.id !== id);
+                    saveTodos();
+                    renderTodos();
+                }
+            };
+
+            // --- Filtering, Searching, Sorting Event Handlers ---
+            filterButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    currentFilter = button.dataset.filter;
+                    renderTodos();
+                });
+            });
+
+            searchInput.addEventListener('input', (e) => {
+                currentSearchTerm = e.target.value;
+                renderTodos();
+            });
+
+            sortSelect.addEventListener('change', (e) => {
+                currentSort = e.target.value;
+                renderTodos();
+            });
+
+            // Initial Render
+            renderTodos();
+        });
+    </script>
+</body>
+</html>
