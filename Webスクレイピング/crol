@@ -1,0 +1,258 @@
+// -----------------------------------------------------------------------------
+//  CrawlerConsole PoC - 静的 → 動的フォールバック方式 〈完全実装・コメント強化版〉
+//  .NET Framework 4.8 コンソールアプリ
+// -----------------------------------------------------------------------------
+//  目的 : トップページを起点に、キーワード + PDF リンクを含むページ URL を収集
+//  特色 :
+//    • 静的 HTML 解析 → ヒット無ければ Selenium で動的レンダリング
+//    • robots.txt を簡易チェック
+//    • 直列 BFS（Queue）でクロール
+//    • 結果は CSV 出力 (Hit / NoHit)
+// -----------------------------------------------------------------------------
+//  NuGet 依存
+//    HtmlAgilityPack, Newtonsoft.Json, Selenium.WebDriver, Selenium.WebDriver.ChromeDriver
+// -----------------------------------------------------------------------------
+
+using System;
+using System.IO;
+using System.Net.Http;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading;
+using HtmlAgilityPack;
+using Newtonsoft.Json;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+
+namespace CrawlerConsole
+{
+    // ========== エントリポイント =====================================================
+    internal static class Program
+    {
+        private const string CompanyCsvPath = "company_urls.csv"; // 入力 CSV
+        private const string ConfigPath     = "crawler.json";     // 設定 JSON
+        private const string OutputDir      = "output";          // 出力フォルダ
+
+        private static void Main()
+        {
+            // --- 設定読込 & 入力準備 -------------------------------------------
+            var cfg       = CrawlerConfig.Load(ConfigPath);
+            var companies = CompanyLoader.Load(CompanyCsvPath);
+            Directory.CreateDirectory(OutputDir);
+            ResultWriter.Init(OutputDir);
+            var robotsChecker = new RobotsTxtChecker(cfg.UserAgent);
+
+            // --- 企業ごとに処理 -----------------------------------------------
+            foreach (var comp in companies)
+            {
+                Console.WriteLine($"\n=== {comp.SecuritiesCode} : {comp.TopPageUrl} ===");
+                bool hit = Crawler.Run(comp, cfg, robotsChecker);
+                if (!hit)
+                {
+                    ResultWriter.WriteNoHit(comp);
+                    Console.WriteLine("   → ヒット無し");
+                }
+                Thread.Sleep(1000); // 連続アクセス緩和
+            }
+
+            Console.WriteLine("\nクローリング完了。Enter で終了");
+            Console.ReadLine();
+        }
+    }
+
+    // ========== 設定データ ==========================================================
+    internal sealed class CrawlerConfig
+    {
+        public int MaxDepth { get; set; } = 3;                      // BFS 深度
+        public List<string> Keywords { get; set; } = new();        // キーワード一覧
+        public string UserAgent { get; set; } =                    // Headless 検知回避 UA
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 CrawlerForIR/1.0";
+        public RenderConfig Render { get; set; } = new();
+        public static CrawlerConfig Load(string path) =>
+            JsonConvert.DeserializeObject<CrawlerConfig>(File.ReadAllText(path));
+    }
+
+    internal sealed class RenderConfig
+    {
+        public string Mode { get; set; } = "Auto"; // None / Auto / Always
+        public int MinScriptTags { get; set; } = 5; // script タグ閾値
+        public int WaitMilliseconds { get; set; } = 3000; // DOM 安定待ち
+    }
+
+    // ========== 企業モデル & CSV ローダ =============================================
+    internal sealed class Company
+    {
+        public string SecuritiesCode { get; }
+        public Uri    TopPageUrl     { get; }
+        public Company(string code, Uri url){ SecuritiesCode = code; TopPageUrl = url; }
+    }
+
+    internal static class CompanyLoader
+    {
+        public static List<Company> Load(string csvPath)
+        {
+            return File.ReadLines(csvPath)
+                       .Select(l => l.Trim())
+                       .Where(l => l.Contains(','))
+                       .Select(l => l.Split(','))
+                       .Where(p => p.Length>=2 && Uri.TryCreate(p[1].Trim(),UriKind.Absolute,out _))
+                       .Select(p => new Company(p[0].Trim(), new Uri(p[1].Trim())))
+                       .ToList();
+        }
+    }
+
+    // ========== robots.txt チェッカー ==============================================
+    internal sealed class RobotsTxtChecker
+    {
+        private readonly HttpClient _http = new();
+        private readonly string _ua;
+        private readonly Dictionary<string,List<string>> _cache = new();
+        public RobotsTxtChecker(string ua)=>_ua=ua;
+        public bool IsAllowed(Uri url)
+        {
+            if(!_cache.TryGetValue(url.Host,out var dis)){ dis=Fetch(url.Host); _cache[url.Host]=dis; }
+            return dis.All(p=>!url.AbsolutePath.StartsWith(p,StringComparison.OrdinalIgnoreCase));
+        }
+        private List<string> Fetch(string host)
+        {
+            try{
+                var req=new HttpRequestMessage(HttpMethod.Get,$"https://{host}/robots.txt");
+                req.Headers.UserAgent.ParseAdd(_ua);
+                string txt=_http.Send(req).Content.ReadAsStringAsync().Result;
+                var list=new List<string>(); bool any=false;
+                foreach(var raw in txt.Split('\n'))
+                {
+                    var line=raw.Trim();
+                    if(line.StartsWith("User-agent",StringComparison.OrdinalIgnoreCase)){ any=line.Contains("*"); continue; }
+                    if(any && line.StartsWith("Disallow",StringComparison.OrdinalIgnoreCase))
+                    { var path=line.Split(':')[1].Trim(); if(path.Length>0) list.Add(path); }
+                    if(line.StartsWith("User-agent",StringComparison.OrdinalIgnoreCase)&&!line.Contains("*")) any=false;
+                }
+                return list;
+            }catch{return new();}
+        }
+    }
+
+    // ========== クローラ本体 ========================================================
+    internal static class Crawler
+    {
+        /// <summary>1 社分を BFS でクロールし、ヒット有無を返す。</summary>
+        public static bool Run(Company comp, CrawlerConfig cfg, RobotsTxtChecker robots)
+        {
+            var kwRegex = new Regex(string.Join("|", cfg.Keywords), RegexOptions.IgnoreCase|RegexOptions.Compiled);
+            var queue   = new Queue<(Uri url,int depth)>();
+            var visited = new HashSet<string>();
+            queue.Enqueue((comp.TopPageUrl,0));
+            bool hit=false;
+
+            while(queue.Count>0)
+            {
+                var (url,depth)=queue.Dequeue();
+                if(!visited.Add(url.AbsoluteUri)) continue;           // 既訪問ならスキップ
+                if(!robots.IsAllowed(url)) { Console.WriteLine($"   [SKIP:robots] {url}"); continue; }
+
+                // -------- 静的取得 --------
+                string html = HtmlGetter.FetchStatic(url,cfg.UserAgent);
+                bool hitStatic = PageAnalyzer.IsHit(html,kwRegex);
+
+                // -------- 動的取得要否 --------
+                bool needDyn = cfg.Render.Mode.Equals("Always",StringComparison.OrdinalIgnoreCase) ||
+                               (cfg.Render.Mode.Equals("Auto",StringComparison.OrdinalIgnoreCase) &&
+                                !hitStatic && PageAnalyzer.CountScriptTags(html)>=cfg.Render.MinScriptTags);
+                if(needDyn) html = HtmlGetter.FetchDynamic(url,cfg.Render,cfg.UserAgent);
+
+                // -------- 判定 --------
+                if(PageAnalyzer.IsHit(html,kwRegex))
+                {
+                    ResultWriter.WriteHit(comp,url);
+                    Console.WriteLine($"   [HIT] {url}");
+                    hit = true;
+                }
+
+                // -------- リンク展開 --------
+                if(depth<cfg.MaxDepth)
+                {
+                    foreach(var link in PageAnalyzer.ExtractLinks(html,url))
+                        queue.Enqueue((link,depth+1));
+                }
+            }
+            return hit;
+        }
+    }
+
+    // ========== HTML 取得ユーティリティ ===========================================
+    internal static class HtmlGetter
+    {
+        private static readonly HttpClient Http = new();
+        public static string FetchStatic(Uri url,string ua)
+        {
+            try{ var req=new HttpRequestMessage(HttpMethod.Get,url); req.Headers.UserAgent.ParseAdd(ua); return Http.Send(req).Content.ReadAsStringAsync().Result; }
+            catch(Exception ex){ Console.WriteLine($"   [ERROR:STATIC] {ex.Message}"); return string.Empty; }
+        }
+        public static string FetchDynamic(Uri url,RenderConfig r,string ua)
+        {
+            try{
+                var opt=new ChromeOptions();
+                opt.AddArgument("--headless"); opt.AddArgument("--disable-gpu"); opt.AddArgument("--no-sandbox");
+                opt.AddArgument("--blink-settings=imagesEnabled=false"); opt.AddArgument($"--user-agent={ua}");
+                using IWebDriver drv=new ChromeDriver(opt);
+                drv.Navigate().GoToUrl(url);
+                Thread.Sleep(r.WaitMilliseconds);
+                return drv.PageSource;
+            }catch(Exception ex){ Console.WriteLine($"   [ERROR:DYNAMIC] {ex.Message}"); return string.Empty; }
+        }
+    }
+
+    // ========== HTML 解析ユーティリティ ===========================================
+    internal static class PageAnalyzer
+    {
+        private static readonly Regex PdfLinkRegex = new Regex("href\\s*=\\s*\"[^\"]+\\.pdf\"", RegexOptions.IgnoreCase|RegexOptions.Compiled);
+
+        public static bool IsHit(string html, Regex kwRegex)
+        {
+            if(string.IsNullOrEmpty(html)) return false;
+            bool hasKeyword = kwRegex.IsMatch(html);   // キーワード存在
+            bool hasPdf     = PdfLinkRegex.IsMatch(html); // PDF リンク存在
+            return hasKeyword && hasPdf;
+        }
+
+        public static int CountScriptTags(string html)
+        {
+            if(string.IsNullOrEmpty(html)) return 0;
+            var doc=new HtmlDocument(); doc.LoadHtml(html);
+            return doc.DocumentNode.SelectNodes("//script")?.Count ?? 0;
+        }
+
+        public static IEnumerable<Uri> ExtractLinks(string html, Uri baseUri)
+        {
+            if(string.IsNullOrEmpty(html)) yield break;
+            var doc=new HtmlDocument(); doc.LoadHtml(html);
+            var nodes=doc.DocumentNode.SelectNodes("//a[@href]"); if(nodes==null) yield break;
+            foreach(var a in nodes)
+            {
+                string href = a.GetAttributeValue("href", string.Empty).Split('#')[0];
+                if(href.Length==0) continue;
+                if(!Uri.TryCreate(baseUri, href, out var abs)) continue;
+                if(abs.Host != baseUri.Host) continue; // 同一ドメインのみ
+                yield return abs;
+            }
+        }
+    }
+
+    // ========== 結果出力ユーティリティ ===========================================
+    internal static class ResultWriter
+    {
+        private static string _hitPath, _noPath;
+        private static readonly object _lock=new();
+        public static void Init(string dir)
+        {
+            _hitPath=Path.Combine(dir,"ReportPages.csv");
+            _noPath =Path.Combine(dir,"NoHitCompanies.csv");
+            File.WriteAllText(_hitPath,"SecuritiesCode,PageUrl\r\n");
+            File.WriteAllText(_noPath, "SecuritiesCode\r\n");
+        }
+        public static void WriteHit(Company c, Uri url){ lock(_lock){ File.AppendAllText(_hitPath,$"{c.SecuritiesCode},{url}\r\n"); } }
+        public static void WriteNoHit(Company c)       { lock(_lock){ File.AppendAllText(_noPath,$"{c.SecuritiesCode}\r\n"); } }
+    }
+}
