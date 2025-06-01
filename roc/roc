@@ -1,0 +1,286 @@
+承知いたしました。ご指定のURLの内容を日本語に翻訳し、詳細な手順としてまとめます。
+
+---
+
+## Rocket.Chat: エアギャップ環境へのDockerを利用したデプロイ手順
+
+エアギャップ環境（外部ネットワークから物理的に隔離された環境）は、高度なセキュリティが求められる組織で利用されます。Rocket.Chatはこのような環境へのデプロイをサポートしていますが、プレミアムライセンスが必要です。
+
+ここでは、Dockerを使用してエアギャップ環境にRocket.Chatをデプロイするための2つの主要な方法について詳しく説明します。
+
+### オプション1：インターネット接続のあるサーバーからDockerイメージをコピーする方法
+
+この方法は、インターネットに接続されたサーバーで必要なDockerイメージをダウンロードし、それらをファイルとしてエアギャップ環境内のサーバーに転送してデプロイする手順です。
+
+#### **前提条件**
+
+* インターネットにアクセスできるサーバー1台。
+* Rocket.Chatをデプロイするエアギャップ環境のサーバー1台。
+* 両方のサーバーにDockerがインストールされ、正常に動作していること。
+* 両方のサーバーが互いに通信できること（例：内部ネットワーク経由）。
+
+#### **手順**
+
+**ステップ1：Rocket.Chat関連ファイルのダウンロード**
+
+1.  **インターネット接続のあるサーバー**で、以下のコマンドを実行してRocket.ChatとMongoDBのDockerイメージをダウンロードします。
+    * **注意:** `7.0.0`の部分は、必要に応じて対象のバージョンに変更してください。MongoDBのバージョンも、利用するRocket.Chatのリリースノートを確認し、互換性のあるバージョンを指定してください。
+
+    ```bash
+    docker pull registry.rocket.chat/rocketchat/rocket.chat:7.0.0
+    docker pull docker.io/bitnami/mongodb:latest
+    ```
+
+2.  ダウンロードが完了したら、`docker images`コマンドでイメージがリストに表示されることを確認します。
+
+3.  ダウンロードしたイメージを`.tar`ファイルとして保存します。
+
+    ```bash
+    docker save -o rocketchat.tar registry.rocket.chat/rocketchat/rocket.chat:7.0.0
+    docker save -o mongodb.tar docker.io/bitnami/mongodb:latest
+    ```
+
+4.  作成された`rocketchat.tar`と`mongodb.tar`ファイルを、セキュアな方法（USBドライブなど）で**エアギャップ環境のサーバー**に転送します。
+
+**ステップ2：エアギャップサーバーでのデプロイ**
+
+1.  **エアギャップ環境のサーバー**に移動し、転送した`.tar`ファイルがあるディレクトリに移動します。
+
+2.  `ls`コマンドなどで、`rocketchat.tar`と`mongodb.tar`ファイルが存在することを確認します。
+
+3.  以下のコマンドを実行して、`.tar`ファイルからDockerイメージをロードします。
+
+    ```bash
+    docker load -i rocketchat.tar
+    docker load -i mongodb.tar
+    ```
+
+4.  `docker images`コマンドで、イメージが正常にロードされたことを確認します。
+
+5.  `docker-compose.yml`ファイルを作成し、以下の内容を記述します。`image`ディレクティブが、先ほどロードしたイメージ名を指していることを確認してください。
+
+    ```yaml
+    version: '3'
+    services:
+      rocketchat:
+        image: registry.rocket.chat/rocketchat/rocket.chat:7.0.0
+        ports:
+          - "3000:3000"
+        environment:
+          - MONGO_URL=mongodb://mongo:27017/rocketchat
+          - ROOT_URL=http://your-server-ip:3000
+        depends_on:
+          - mongo
+      mongo:
+        image: docker.io/bitnami/mongodb:latest
+        volumes:
+          - ./data/db:/bitnami/mongodb
+    ```
+    * `your-server-ip`の部分は、お使いのサーバーのIPアドレスに置き換えてください。
+
+6.  以下のコマンドでRocket.Chatを起動します。
+
+    ```bash
+    docker-compose up -d
+    ```
+
+### オプション2：プライベートDockerレジストリを利用する方法
+
+この方法は、エアギャップ環境内でアクセス可能なプライベートDockerレジストリを構築し、そこにイメージを格納してからデプロイする手順です。
+
+#### **前提条件**
+
+* インターネットにアクセスできるサーバー1台。
+* エアギャップ環境のサーバー2台（1台はプライベートレジストリ用、もう1台はRocket.Chatインストール用）。
+* 3台すべてのサーバーにDockerがインストールされ、正常に動作していること。
+* 3台のサーバーが互いに通信できること。
+
+#### **手順**
+
+**ステップ1：プライベートレジストリの作成**
+
+1.  **プライベートレジストリをホストするサーバー**で、以下のコマンドを実行してDockerレジストリイメージを起動します。
+
+    ```bash
+    docker run -d -p 5000:5000 --restart=always --name registry registry:2
+    ```
+
+**ステップ2：イメージをプライベートレジストリへ転送**
+
+1.  **インターネット接続のあるサーバー**で、Rocket.ChatとMongoDBのイメージをダウンロードします（オプション1と同様）。
+
+    ```bash
+    docker pull registry.rocket.chat/rocketchat/rocket.chat:7.0.0
+    docker pull docker.io/bitnami/mongodb:latest
+    ```
+
+2.  ダウンロードしたイメージに、プライベートレジストリを指すようにタグを付けます。`<registry_ip_address>`は、プライベートレジストリをホストしているサーバーのIPアドレスに置き換えてください。
+
+    ```bash
+    docker tag registry.rocket.chat/rocketchat/rocket.chat:7.0.0 <registry_ip_address>:5000/rocketchat/rocket.chat:7.0.0
+    docker tag docker.io/bitnami/mongodb:latest <registry_ip_address>:5000/bitnami/mongodb:latest
+    ```
+
+3.  タグを付けたイメージをプライベートレジストリにプッシュします。
+
+    ```bash
+    docker push <registry_ip_address>:5000/rocketchat/rocket.chat:7.0.0
+    docker push <registry_ip_address>:5000/bitnami/mongodb:latest
+    ```
+
+**ステップ3：エアギャップサーバーでのインストール**
+
+1.  **Rocket.Chatをインストールするサーバー**で、`docker-compose.yml`ファイルを作成します。`image`のパスがプライベートレジストリを指すように変更します。
+
+    ```yaml
+    version: '3'
+    services:
+      rocketchat:
+        image: <registry_ip_address>:5000/rocketchat/rocket.chat:7.0.0
+        ports:
+          - "3000:3000"
+        environment:
+          - MONGO_URL=mongodb://mongo:27017/rocketchat
+          - ROOT_URL=http://your-server-ip:3000
+        depends_on:
+          - mongo
+      mongo:
+        image: <registry_ip_address>:5000/bitnami/mongodb:latest
+        volumes:
+          - ./data/db:/bitnami/mongodb
+    ```
+    * `<registry_ip_address>`と`your-server-ip`を適切なIPアドレスに置き換えてください。
+
+2.  以下のコマンドでRocket.Chatを起動します。Dockerは、指定されたプライベートレジストリからイメージを取得してコンテナを実行します。
+
+    ```bash
+    docker-compose up -d
+    ```
+
+### ワークスペースのオフライン登録
+
+エアギャップ環境では、通常のオンライン登録ができないため、以下の手順でオフライン登録を行う必要があります。
+
+1.  セットアップウィザードで、「オフラインで登録」ボタンをクリックします。
+2.  表示されたトークンをコピーします。
+3.  インターネットに接続できる別のマシンでRocket.Chat Cloudにログインし、「セルフマネージドを登録」からオフライン登録を選択し、先ほどのトークンを貼り付けます。
+4.  Rocket.Chat Cloudで新しいコードが生成されるので、それをコピーします。
+5.  元のRocket.Chatのセットアップ画面に戻り、Cloudから取得したコードを貼り付けて登録を完了します。
+
+
+
+
+---------------------
+
+承知いたしました。
+WindowsのDocker Desktop環境に、Rocket.ChatをDocker Composeを使って構築するための手順を、日本語で詳細に解説します。
+
+---
+
+### Rocket.Chat: Docker Composeを利用した通常環境でのデプロイ手順 (Windows)
+
+このガイドでは、お使いのWindows PCにインストール済みのDocker Desktopを利用して、Rocket.Chatサーバーを簡単にセットアップする手順を説明します。
+
+#### **前提条件**
+
+* Windows 10または11
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/)がインストールされ、正常に起動していること。
+
+#### **手順**
+
+**ステップ1：作業用フォルダの作成**
+
+まず、Rocket.Chatの関連ファイルを保管するための専用フォルダを作成します。この作業は後々の管理を容易にします。
+
+1.  エクスプローラーを開き、Cドライブ直下などに新しいフォルダを作成します。
+    * 例： `C:\rocketchat`
+
+**ステップ2：`docker-compose.yml`ファイルの作成**
+
+次に、Dockerにどのようなコンテナを、どのように起動させるかを指示するための設定ファイルを作成します。
+
+1.  先ほど作成したフォルダ（`C:\rocketchat`）を開きます。
+2.  フォルダ内で右クリックし、「新規作成」 > 「テキスト ドキュメント」を選択します。
+3.  ファイル名を `docker-compose.yml` に変更します。（`.txt`という拡張子が表示されている場合は、それも消してファイル名を変更してください）
+4.  作成した `docker-compose.yml` ファイルをメモ帳やVisual Studio Codeなどのテキストエディタで開き、以下の内容をコピーして貼り付けます。
+
+```yaml
+version: '3.8'
+
+services:
+  rocketchat:
+    image: registry.rocket.chat/rocketchat/rocket.chat:latest
+    container_name: rocketchat
+    restart: unless-stopped
+    volumes:
+      - ./uploads:/app/uploads
+    environment:
+      - PORT=3000
+      - ROOT_URL=http://localhost:3000
+      - MONGO_URL=mongodb://mongo:27017/rocketchat
+      - MONGO_OPLOG_URL=mongodb://mongo:27017/local
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongo
+
+  mongo:
+    image: docker.io/bitnami/mongodb:latest
+    container_name: mongo
+    restart: unless-stopped
+    volumes:
+      - ./data/db:/bitnami/mongodb
+      - ./data/dump:/dump
+```
+
+* **解説:**
+    * `services:`: `rocketchat`と`mongo`という2つのサービス（コンテナ）を定義しています。
+    * `image:`: Docker HubからダウンロードしてくるDockerイメージを指定します。`latest`は常に最新版を取得します。
+    * `volumes:`: データを永続化するための設定です。`./uploads`や`./data/db`は、`docker-compose.yml`があるフォルダ内に作られます。これにより、コンテナを停止・削除してもアップロードしたファイルやデータベースの内容が消えません。
+    * `ports:`: `3000:3000`は、お使いのPC（ホスト）の3000番ポートへのアクセスを、Rocket.Chatコンテナの3000番ポートに繋ぐ設定です。
+    * `environment:`: Rocket.Chatコンテナの環境変数を設定します。データベースの接続先などを指定しています。
+    * `depends_on:`: `rocketchat`は`mongo`に依存しているため、必ず`mongo`が起動してから`rocketchat`が起動するようになります。
+
+**ステップ3：Rocket.Chatの起動**
+
+いよいよRocket.Chatを起動します。コマンドプロンプト（またはPowerShell）を使用します。
+
+1.  `docker-compose.yml`を保存したフォルダ（`C:\rocketchat`）のアドレスバーに `cmd` と入力してEnterキーを押します。これにより、そのフォルダをカレントディレクトリとしてコマンドプロンプトが起動します。
+2.  開いたコマンドプロンプトのウィンドウで、以下のコマンドを実行します。
+
+    ```bash
+    docker-compose up -d
+    ```
+    * `up`: `docker-compose.yml`の内容に基づいてコンテナを起動します。
+    * `-d`: バックグラウンドで起動する（デタッチモード）ためのオプションです。
+
+    初回実行時は、Rocket.ChatとMongoDBのイメージのダウンロードが始まるため、数分かかることがあります。
+
+**ステップ4：起動の確認**
+
+コンテナが正常に起動したか確認しましょう。
+
+1.  同じコマンドプロンプトで、以下のコマンドを実行します。
+
+    ```bash
+    docker-compose ps
+    ```
+2.  `rocketchat`と`mongo`の2つのコンテナが表示され、`State`が `Up` になっていれば成功です。
+
+**ステップ5：Rocket.Chatへのアクセス**
+
+Webブラウザを開き、アドレスバーに以下のように入力します。
+
+`http://localhost:3000`
+
+初回アクセス時には、管理者アカウントの作成や組織情報の設定を行うためのセットアップウィザードが表示されます。画面の指示に従って設定を進めてください。
+
+#### **Rocket.Chatの停止方法**
+
+Rocket.Chatの利用を停止したい場合は、コマンドプロンプトで`C:\rocketchat`フォルダに移動し、以下のコマンドを実行します。
+
+```bash
+docker-compose down
+```
+
+これにより、作成されたコンテナが停止・削除されます。ただし、`volumes`で指定したフォルダ（`uploads`と`data`）は残るため、再度 `docker-compose up -d` を実行すれば、以前のデータを使用して再開できます。
