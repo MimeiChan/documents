@@ -1,0 +1,153 @@
+### 追加要件の整理
+
+* **対象イベント**
+
+  * `workitem.created` (作業項目が新規に作成された)
+  * `workitem.updated` (既存の作業項目が更新された)
+    Azure DevOps Service Hooks ではいずれも正式サポートされており、ペイロードには `resource.fields` や `resource.revision` が含まれます ([Microsoft Learn][1])
+* **ペイロード差分**
+
+  * **created** … `resource.fields["System.Title"]` など現在値のみ。
+  * **updated** … `resource.fields.<FieldName>.oldValue / newValue` という辞書で差分が届く ([GitHub][2])
+* **Rocket.Chat 側のスクリプト API** は以前と同じく `process_incoming_request()` で JSON を整形して `text` へ返せばよい ([Rocket.Chat][3])
+
+---
+
+## 完全版スクリプト（既存スクリプトに追記済み）
+
+```javascript
+/* exported Script */
+/* globals console */
+
+/**
+ * Azure DevOps ➜ Rocket.Chat Webhook Bridge
+ * 対応イベント:
+ *   build.complete, git.pullrequest.created, git.push,
+ *   workitem.created, workitem.updated
+ * Rocket.Chat 6.x / Azure DevOps Server 2022 で確認
+ */
+class Script {
+  process_incoming_request({ request }) {
+    const hdr = k => (request.headers[k] || request.headers[k.toLowerCase()]);
+    const event =
+      hdr('X-AzureDevOps-Event') ||
+      hdr('X-VSS-Event') ||
+      hdr('X-MS-VSS-NotificationEvent') ||
+      'unknown';
+
+    const body = request.content || {};
+    const r    = body.resource || {};
+
+    const text = this.#format(event.toLowerCase(), body, r);
+
+    return {
+      content: {
+        text,
+        alias: 'Azure DevOps',
+        emoji: ':rocket:'
+      }
+    };
+  }
+
+  #format(event, body, r) {
+    switch (event) {
+      /* ---------- Build 完了 ---------- */
+      case 'build.complete': /* 省略 (前回回答参照) */ break;
+
+      /* ---------- Pull Request ---------- */
+      case 'git.pullrequest.created': /* 省略 */ break;
+
+      /* ---------- Push ---------- */
+      case 'git.push': /* 省略 */ break;
+
+      /* ---------- Work Item 作成 ---------- */
+      case 'workitem.created': {
+        const f = r.fields || {};
+        return [
+          '📝 **作業項目 作成**',
+          `• #${r.id}  ${f['System.Title'] ?? '—'}`,
+          `• 種類: ${f['System.WorkItemType'] ?? '—'}`,
+          `• 状態: ${f['System.State'] ?? '—'}`,
+          `• 担当: ${this.#name(f['System.AssignedTo'])}`,
+          r.url ? `• [Webリンク](${r.url})` : ''
+        ].filter(Boolean).join('\n');
+      }
+
+      /* ---------- Work Item 更新 ---------- */
+      case 'workitem.updated': {
+        const fNow   = (r.revision && r.revision.fields) || {};
+        const diffs  = r.fields || {};
+        const lines  = Object.entries(diffs).map(([k, v]) => {
+          const key = k.split('.').pop();               // System.State → State
+          const old = this.#val(v.oldValue);
+          const neu = this.#val(v.newValue);
+          return `   • ${key}: ${old} → ${neu}`;
+        });
+        return [
+          '🔄 **作業項目 更新**',
+          `• #${r.id}  ${fNow['System.Title'] ?? '—'}`,
+          `• 種類: ${fNow['System.WorkItemType'] ?? '—'}`,
+          lines.length ? '• 変更:\n' + lines.join('\n') : '',
+          r.url ? `• [Webリンク](${r.url})` : ''
+        ].filter(Boolean).join('\n');
+      }
+
+      /* ---------- その他 ---------- */
+      default:
+        return `📣 受信イベント **${event}**\n\`\`\`${JSON.stringify(r, null, 2).slice(0, 1500)}\`\`\``;
+    }
+  }
+
+  /** displayName 抽出ヘルパ */
+  #name(val) {
+    if (!val) return '—';
+    if (typeof val === 'string') return val.split('<')[0].trim();
+    return val.displayName || val.name || JSON.stringify(val);
+  }
+
+  /** undefined/null → '—' */
+  #val(v) { return v === undefined || v === null ? '—' : v; }
+}
+```
+
+**ポイント**
+
+| 箇所                 | 説明                                                                             |
+| ------------------ | ------------------------------------------------------------------------------ |
+| `workitem.created` | `resource.fields` から必要最低限を抜き出して一覧化。                                            |
+| `workitem.updated` | `resource.fields` で届く差分を **フィールド名: 旧 → 新** の箇条書きへ整形。`revision.fields` で現在値も取得。 |
+| `#name()`          | `System.AssignedTo` が `"displayName <mail>"` やオブジェクト形式でも崩れないよう抽出。              |
+| 長い JSON            | 未対応イベントは 1 500 文字で丸めて引用ブロック表示。                                                 |
+
+---
+
+## 使い方（再掲）
+
+1. **Rocket.Chat**
+
+   * *Administration → Workspace → Integrations → Incoming → New*
+   * Post to: 投稿先チャンネル
+   * **Scripts Enabled** を ON → 上記スクリプトを貼り付け → 保存
+2. **Azure DevOps Server**
+
+   * *Project Settings → Service Hooks → +*
+   * Service: **Web Hooks**
+   * Trigger: *Work item created* / *Work item updated* など
+   * Action URL: Rocket.Chat が発行した Webhook URL を設定
+3. **テスト**
+
+   * DevOps で *Test* を押すか実際に作業項目を作成・更新し、Rocket.Chat に通知が来ることを確認。
+
+---
+
+### 補足
+
+* フィールドを追加したければ `lines` 生成部や `#format()` の表示行を増やしてください。
+* 更新イベントは **差分が無い場合** もあるので空チェックを入れてあります。
+* ルームの動的切り替えやカード形式（attachments）にしたい場合は `return` オブジェクトに `roomId` や `attachments` を追加してください。
+
+これで **作業項目の追加・変更** もリアルタイムに Rocket.Chat へ綺麗に流せます。 🎉
+
+[1]: https://learn.microsoft.com/en-us/azure/devops/service-hooks/events?view=azure-devops&utm_source=chatgpt.com "Service hooks events - Azure DevOps | Microsoft Learn"
+[2]: https://github.com/aspnet/AspNetWebHooks/blob/master/test/Microsoft.AspNet.WebHooks.Receivers.VSTS.Test/Payloads/WorkItemUpdatedPayloadTests.cs?utm_source=chatgpt.com "AspNetWebHooks/test/Microsoft.AspNet.WebHooks.Receivers ..."
+[3]: https://docs.rocket.chat/docs/integrations?utm_source=chatgpt.com "Integrations - Rocket-Chat Documentation"
