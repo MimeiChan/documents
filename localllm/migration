@@ -1,0 +1,180 @@
+
+## 🔍 **Phase 1: 現在の状況確認と準備**
+
+### 1.1 現在のOllamaコンテナとボリューム確認
+```bash
+# 現在のOllamaコンテナ名を確認
+docker ps -a --filter "ancestor=ollama/ollama" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+# 使用中のボリューム名を確認
+docker inspect <your_ollama_container_name> | grep -A 5 -B 5 "Mounts"
+
+# ボリューム一覧確認
+docker volume ls | grep ollama
+```
+
+### 1.2 現在のモデル一覧を記録（検証用）
+```bash
+# 現在のモデル一覧を保存
+docker exec <your_ollama_container_name> ollama list > models_before_migration.txt
+```
+
+## 🔄 **Phase 2: Docker名前付きボリュームからのバックアップ**
+
+### 2.1 バックアップディレクトリ作成
+```powershell
+# PowerShellで実行
+mkdir C:\temp\ollama_migration -Force
+cd C:\temp\ollama_migration
+```
+
+### 2.2 ボリュームからバックアップを作成
+```bash
+# 名前付きボリュームからtarアーカイブを作成
+# <volume_name>は実際のボリューム名に置き換える（例：ollama、myproject_ollama等）
+docker run --rm \
+  -v <volume_name>:/source \
+  -v /c/temp/ollama_migration:/backup \
+  ubuntu \
+  tar czf /backup/ollama_models_backup.tar.gz -C /source .
+
+# Windows環境での代替コマンド（上記が動作しない場合）
+docker run --rm -v <volume_name>:/source -v "C:\temp\ollama_migration":/backup ubuntu tar czf /backup/ollama_models_backup.tar.gz -C /source .
+```
+
+### 2.3 バックアップ検証
+```bash
+# バックアップファイルの存在と内容確認
+ls -la C:\temp\ollama_migration\
+docker run --rm -v "C:\temp\ollama_migration":/backup ubuntu tar -tzf /backup/ollama_models_backup.tar.gz | head -20
+```
+
+## 🔧 **Phase 3: Windows版Ollamaインストール**
+
+### 3.1 公式インストーラーでインストール
+1. https://ollama.ai/download からWindows版をダウンロード
+2. インストーラーを実行
+3. インストール後、コマンドプロンプトで `ollama --version` を実行して確認
+
+### 3.2 Windows版のデフォルトパス確認
+```powershell
+# Ollamaのモデル保存パスを確認
+echo $env:USERPROFILE\.ollama
+dir "$env:USERPROFILE\.ollama" 2>$null
+```
+
+## 📦 **Phase 4: バックアップからWindows版への復元**
+
+### 4.1 Windows版Ollamaサービス停止
+```powershell
+# Ollamaサービスを停止
+Stop-Process -Name "ollama" -Force -ErrorAction SilentlyContinue
+taskkill /IM ollama.exe /F 2>$null
+```
+
+### 4.2 復元前の準備
+```powershell
+# 既存のモデルフォルダをバックアップ（存在する場合）
+if (Test-Path "$env:USERPROFILE\.ollama") {
+    Move-Item "$env:USERPROFILE\.ollama" "$env:USERPROFILE\.ollama_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+}
+
+# 新しいモデルフォルダを作成
+mkdir "$env:USERPROFILE\.ollama" -Force
+```
+
+### 4.3 一時的なコンテナでバックアップを復元
+```bash
+# Docker経由でWindowsパスに復元
+docker run --rm \
+  -v "C:\temp\ollama_migration":/backup \
+  -v "$env:USERPROFILE\.ollama":/restore \
+  ubuntu \
+  tar xzf /backup/ollama_models_backup.tar.gz -C /restore
+
+# PowerShellでの代替方法（Dockerが使えない場合）
+# 7-Zipが必要: winget install 7zip.7zip
+cd "C:\temp\ollama_migration"
+7z x ollama_models_backup.tar.gz
+7z x ollama_models_backup.tar -o"$env:USERPROFILE\.ollama"
+```
+
+## ✅ **Phase 5: 検証とテスト**
+
+### 5.1 フォルダ構造確認
+```powershell
+# 復元されたファイル構造を確認
+dir "$env:USERPROFILE\.ollama" -Recurse | Select-Object Name, Length | Format-Table
+```
+
+### 5.2 Windows版Ollamaでモデル一覧確認
+```bash
+# Ollamaサービス開始（自動で開始しない場合）
+ollama serve &
+
+# モデル一覧確認
+ollama list
+
+# 移行前のリストと比較
+ollama list > models_after_migration.txt
+```
+
+### 5.3 機能テスト
+```bash
+# 各モデルの動作確認（例）
+ollama run llama2 "Hello, can you confirm you're working properly?"
+ollama run mistral "Simple test: what is 2+2?"
+```
+
+## 🔧 **Phase 6: トラブルシューティング**
+
+### 6.1 モデルが表示されない場合
+```powershell
+# Ollamaサービス完全再起動
+taskkill /IM ollama.exe /F 2>$null
+Start-Sleep 3
+ollama serve
+
+# キャッシュクリア
+Remove-Item "$env:USERPROFILE\.ollama\logs\*" -Force -ErrorAction SilentlyContinue
+```
+
+### 6.2 権限問題の解決
+```powershell
+# フォルダとファイルの権限修正
+icacls "$env:USERPROFILE\.ollama" /grant "$env:USERNAME:(OI)(CI)F" /T
+```
+
+## 🧪 **自己テストチェックリスト**
+
+私の推論が正しいか、以下をすべて確認してください：
+
+- [ ] バックアップファイル `ollama_models_backup.tar.gz` が作成された
+- [ ] バックアップ内に `models` フォルダと `blobs` フォルダが含まれている
+- [ ] `$env:USERPROFILE\.ollama\models` フォルダが存在する
+- [ ] `ollama list` でDockerと同じモデルが表示される
+- [ ] 各モデルが実際に実行できる
+- [ ] モデルの応答が期待通りである
+- [ ] `models_before_migration.txt` と `models_after_migration.txt` の内容が一致する
+
+## 🚨 **重要な注意点**
+
+1. **バックアップの完全性**: tar コマンドでバックアップを作成する際は、元のファイル構造を完全に保持することが重要
+
+2. **権限とパス**: Windows環境では、パスの書き方とファイル権限に特に注意が必要
+
+3. **サービス停止**: 復元中はOllamaサービスが停止していることを確認
+
+## 📋 **ロールバック手順**
+
+問題が発生した場合：
+```powershell
+# Windows版をアンインストール
+# Dockerコンテナを再起動
+docker start <your_ollama_container_name>
+docker exec -it <your_ollama_container_name> ollama list
+```
+
+この手順により、Dockerコンテナの名前付きボリュームからWindows版Ollamaへの完全な移行が可能です。各段階で検証を行うことで、データの整合性を保証します。
+
+何か問題が発生した場合は、具体的なエラーメッセージと実行したコマンドを教えてください。
