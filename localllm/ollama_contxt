@@ -1,0 +1,139 @@
+Docker上のOllamaでコンテキストサイズを増やす方法をいくつか説明します。
+
+## 方法1: 環境変数を使用（推奨）
+
+**docker runコマンドの場合：**
+```bash
+docker run -d \
+  -v ollama:/root/.ollama \
+  -p 11434:11434 \
+  -e OLLAMA_NUM_CTX=4096 \
+  --name ollama \
+  ollama/ollama
+```
+
+**docker-compose.ymlの場合：**
+```yaml
+version: '3.8'
+services:
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      - OLLAMA_NUM_CTX=4096
+      # その他のオプション設定
+      - OLLAMA_FLASH_ATTENTION=1  # メモリ効率向上
+      - OLLAMA_KV_CACHE_TYPE=q8_0  # K/Vキャッシュ量子化
+    restart: unless-stopped
+
+volumes:
+  ollama:
+```
+
+## 方法2: API経由での設定
+
+**コンテナ実行後にAPI経由で設定：**
+```bash
+curl http://localhost:11434/api/generate -d '{
+  "model": "llama3.2",
+  "prompt": "あなたの質問",
+  "options": {
+    "num_ctx": 8192
+  }
+}'
+```
+
+## 方法3: 対話モードでの設定
+
+**コンテナ内で直接設定：**
+```bash
+# コンテナに接続
+docker exec -it ollama ollama run llama3.2
+
+# 実行後、対話モード内で設定
+>>> /set parameter num_ctx 8192
+Set parameter 'num_ctx' to '8192'
+```
+
+## 方法4: カスタムModelfileの作成
+
+**1. Modelfileを作成：**
+```dockerfile
+# カスタムModelfile
+FROM llama3.2:latest
+PARAMETER num_ctx 16384
+PARAMETER temperature 0.7
+```
+
+**2. Docker内でモデルを作成：**
+```bash
+# ホストからファイルをコンテナにコピー
+docker cp ./Modelfile ollama:/tmp/Modelfile
+
+# コンテナ内でカスタムモデルを作成
+docker exec -it ollama ollama create custom-llama3.2 -f /tmp/Modelfile
+
+# カスタムモデルを使用
+docker exec -it ollama ollama run custom-llama3.2
+```
+
+## 方法5: 既存コンテナの環境変数変更
+
+**既存のコンテナがある場合：**
+```bash
+# コンテナを停止
+docker stop ollama
+
+# 新しい環境変数でコンテナを再作成
+docker run -d \
+  -v ollama:/root/.ollama \
+  -p 11434:11434 \
+  -e OLLAMA_NUM_CTX=8192 \
+  -e OLLAMA_FLASH_ATTENTION=1 \
+  --name ollama-new \
+  ollama/ollama
+
+# 古いコンテナを削除
+docker rm ollama
+```
+
+## パフォーマンス最適化の追加設定
+
+**メモリ効率を上げる環境変数：**
+```bash
+docker run -d \
+  -v ollama:/root/.ollama \
+  -p 11434:11434 \
+  -e OLLAMA_NUM_CTX=16384 \
+  -e OLLAMA_FLASH_ATTENTION=1 \
+  -e OLLAMA_KV_CACHE_TYPE=q8_0 \
+  -e OLLAMA_NUM_PARALLEL=2 \
+  -e OLLAMA_MAX_LOADED_MODELS=1 \
+  --gpus all \
+  --name ollama \
+  ollama/ollama
+```
+
+## 設定確認方法
+
+**現在の設定を確認：**
+```bash
+# コンテナのログを確認
+docker logs ollama
+
+# API経由で設定確認
+curl http://localhost:11434/api/show -d '{"name": "llama3.2"}'
+```
+
+## 注意事項
+
+1. **メモリ要件**: コンテキストサイズを2倍にすると、メモリ使用量も大幅に増加します
+2. **GPU設定**: GPU使用時は`--gpus all`オプションを追加
+3. **永続化**: 環境変数での設定は新しいモデル実行時にデフォルトとして適用されます
+4. **コンテナ再起動**: 環境変数の変更後はコンテナの再起動が必要です
+
+最も簡単で確実な方法は**方法1の環境変数設定**です。docker-composeを使用している場合は、そちらでの設定をお勧めします。
